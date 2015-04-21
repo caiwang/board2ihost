@@ -1,0 +1,10 @@
+#!/bin/bash
+sed  -i  "s|eth0:10|wlan0|g"  /etc/network/interfaces
+sed  -i  "s|eth0:10|wlan0|g"  /etc/chilli/defaults
+sed  -i  "s|eth0:10|wlan0|g"  /root/iptab.sh
+bash  /root/iptab.sh
+sed  -i  "s|@reboot sudo bash /root/wlsetcap.sh|#@reboot sudo bash /root/wlsetcap.sh|g"  /var/spool/cron/crontabs/root
+sed  -i  "s|mon0|mon.wlan0|g"  /root/config.xml
+sed  -i  "s|eth0|wlan0|g"  /root/configact.xml
+#update-rc.d  hostapd  defaults
+insserv  -f  hostapd

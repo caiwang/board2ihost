@@ -1,0 +1,40 @@
+create view showsta as 
+select mac, sender, netid, optime, 
+year(optime) as pkyear, month(optime) as pkmonth, day(optime) as pkday, 
+DATE_FORMAT(`optime`, '%H') as pkhour, DATE_FORMAT(`optime`, '%i') as pkmin
+from wlsta;
+
+
+mysql> create table tblsta (select * from showsta);
+Query OK, 29890 rows affected (0.56 sec)
+Records: 29890  Duplicates: 0  Warnings: 0
+
+mysql> select * from tblsta into outfile '/var/lib/mysql/wlsta';
+Query OK, 29890 rows affected (0.05 sec)
+
+mysql> create table distblsta (select distinct(mac),sender,netid,pkyear,pkmonth,pkday,pkhour from tblsta);
+Query OK, 24072 rows affected (0.62 sec)
+Records: 24072  Duplicates: 0  Warnings: 0
+
+mysql> select * from distblsta into outfile '/var/lib/mysql/diswlsta';
+Query OK, 24072 rows affected (0.03 sec)
+
+mysql> delete from distblsta where pkyear is null;
+Query OK, 1 row affected (0.03 sec)
+
+mysql> create table cntsta (select sender,netid,pkyear,pkmonth,pkday,pkhour,count(mac) from distblsta group by sender,netid,pkyear,pkmonth,pkday,pkhour order by pkyear,pkmonth,pkday,pkhour);
+Query OK, 1527 rows affected (0.14 sec)
+Records: 1527  Duplicates: 0  Warnings: 0
+
+mysql> select * from cntsta into outfile '/var/lib/mysql/cntsta';
+Query OK, 1527 rows affected (0.00 sec)
+
+mysql> 
+
+
+
+
+
+
+root@iserver:/var/lib/mysql# mysqldump -uroot -p0ffs4t? wlsp tblsta > /var/lib/mysql/showsta
+root@iserver:/var/lib/mysql# mysqldump -uroot -p0ffs4t? wlsp distblsta > /var/lib/mysql/disshowsta

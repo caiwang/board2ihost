@@ -1,0 +1,606 @@
+1，	下载image文件烧制sd卡
+
+从网站下载RASPBIAN image
+http://www.raspberrypi.org/downloads/
+此处使用的是2014-06-20-wheezy-raspbian.img
+
+2，	从sd卡启动pi，从上级路由器中分配并查看ip地址
+
+3，	ssh，用户名：pi  密码：raspberry
+
+4，	修改密码，用root登录和操作
+pi@raspberrypi:~$ sudo passwd root   # rootatusspsp
+pi@raspberrypi:~$ sudo passwd pi    # neverusepi
+
+5，	用root登录，跳过系统设置；修改主机名，修改系统盘label
+root@raspberrypi:~# sed -i 's/raspberrypi/ihost/g' /etc/hosts 
+root@raspberrypi:~# sed -i 's/raspberrypi/ihost/g' /etc/hostname
+root@raspberrypi:~# e2label /dev/mmcblk0p2 ihost
+root@raspberrypi:~# sync
+root@raspberrypi:~# reboot
+
+6，	调整系统分区大小：(2014-06-20-wheezy-raspbian.img 调整到3.5G左右)
+    # for 2014-09-09-wheezy-raspbian.img and on pi B+, 调整到4.5G左右
+root@ihost:~# fdisk /dev/mmcblk0
+Command (m for help): p
+Command (m for help): d
+Partition number (1-4): 2
+Command (m for help): n
+Select (default p): p
+Partition number (1-4, default 2): 2
+First sector (2048-31116287, default 2048): 122880
+Last sector, +sectors or +size{K,M,G} (122880-31116287, default 31116287): +3600M
+Command (m for help): t        # For B+ pi, skip the t step, otherwise, pi cannot be booted. Go to line 36.
+Partition number (1-4): 2
+Hex code (type L to list codes): 83
+Command (m for help): p
+Command (m for help): w
+root@ihost:~# reboot
+root@ihost:~# resize2fs /dev/mmcblk0p2
+root@ihost:~# sync
+7，	设置时区
+root@ihost:~# dpkg-reconfigure tzdata  #Asia Shanghai
+8，	升级(60min + 30min，可跳过不做)
+root@ihost:~# apt-get update && apt-get upgrade 
+root@ihost:~# rpi-update  #ihost only
+Reboot
+
+9，	apt-get instll items
+###common
+#mysql db: root’s password: rootatussp
+apt-get install -y mysql-server python-mysqldb  python-pexpect
+apt-get install -y apache2 apache2-doc apache2-utils dos2unix
+apt-get install -y libapache2-mod-php5 php5 php-pear php5-xcache
+apt-get install -y php5-fpm php-apc php5-mysql php5-curl  ##(for php call jboss REST service)
+apt-get install -y libgtk2.0-dev python-requests # curl client for python
+
+#for sniffer
+apt-get install -y tshark iw
+apt-get install -y libpcap-dev flex bison #winpcap only
+
+#for aircrack-ng
+apt-get install -y subversion libssl-dev
+
+#for captive portal
+apt-get install -y freeradius freeradius-mysql
+
+#for sms
+apt-get install -y gammu python-gammu
+
+#for jboss(不用做)
+apt-get install -y build-essential checkinstall cmake pkg-config yasm
+apt-get install -y ant
+apt-get install -y openjdk-7-jre-headless
+apt-get install -y openjdk-6-jdk
+
+#for hostapd (ihost only)
+apt-get install -y hostapd
+
+#for coova 
+apt-get install -y debhelper libssl-dev libcurl4-gnutls-dev
+
+#dns server
+apt-get install -y dnsmasq dnsutils
+
+###for image resize （不用做）
+apt-get install -y python-imaging
+###url push（可以不做）
+apt-get -y install squid3
+apt-get -y install vlan
+
+# github : in /usr/src/ 
+git clone https://github.com/caiwang/ihostsrc.git
+#git clone git@github.com:caiwang/ihostsrc.git
+git clone https://github.com/usspupdates/ihostupd.git
+
+
+mv  /usr/src/ihostsrc/source/coova-chilli-1.3.0.tar.gz   /usr/src/
+mv  /usr/src/ihostsrc/source/haserl-0.9.30.tar.gz   /usr/src/
+mv  /usr/src/ihostsrc/source/aircrack-ng-1.1.tar.gz   /usr/src/
+mv  /usr/src/ihostsrc/source/4.1.1-WpcapSrc.zip   /usr/src/
+cp  /usr/src/ihostsrc/source/wlcap.ihost  /usr/bin/wlcap
+chmod  +x  /usr/bin/wlcap
+#on ihoste# cp  /media/data/ihostsrc/source/wlcap.ihoste  /usr/bin/wlcap
+
+10，	安装coova 约30分钟，其中build过程约20分钟
+root@ihost:/usr/src# tar xzf coova-chilli-1.3.0.tar.gz
+root@ihost:/usr/src# cd coova-chilli-1.3.0
+root@ihost:/usr/src/coova-chilli-1.3.0# ./configure  --prefix=/usr                                                                  --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info \
+ --sysconfdir=/etc --localstatedir=/var --enable-largelimits \
+ --enable-binstatusfile --enable-statusfile --enable-chilliproxy \
+ --enable-chilliradsec --enable-chilliredir --with-openssl --with-curl \
+ --with-poll --enable-dhcpopt --enable-sessgarden --enable-dnslog \
+ --enable-ipwhitelist --enable-redirdnsreq --enable-miniconfig \
+ --enable-libjson --enable-layer3 --enable-proxyvsa --enable-miniportal \
+ --enable-chilliscript --enable-eapol --enable-uamdomainfile \
+ --enable-modules --enable-multiroute
+root@ihost:/usr/src/coova-chilli-1.3.0# echo 9 > debian/compat
+root@ihost:/usr/src/coova-chilli-1.3.0# nano /usr/src/coova-chilli-1.3.0/debian/rules
+
+install: build
+        dh_testdir
+        dh_testroot
+        dh_clean -k 
+        dh_prep
+        dh_installdirs
+        $(MAKE) DESTDIR=/ install
+#       $(MAKE) DESTDIR=$(CURDIR)/debian/tmp install
+
+root@ihost:/usr/src/coova-chilli-1.3.0# nohup dpkg-buildpackage -us -uc
+root@ihost:/usr/src/coova-chilli-1.3.0# cd ..
+root@ihost:/usr/src# dpkg -i coova-chilli_1.3.0_armhf.deb
+root@ihost:/usr/src#
+
+
+11，安装 haserl
+root@ihost:/usr/src# tar xzf haserl-0.9.30.tar.gz
+root@ihost:/usr/src# cd haserl-0.9.30/
+root@ihost:/usr/src/haserl-0.9.30# ./configure
+root@ihost:/usr/src/haserl-0.9.30# make && make install
+root@ihost:/usr/src/haserl-0.9.30# 
+
+
+12，安装 aircrack-ng 约10分钟，airodump-ng-oui-update可略过不做
+root@ihost:/usr/src# tar zxvf aircrack-ng-1.1.tar.gz
+root@ihost:/usr/src# cd aircrack-ng-1.1/
+root@ihost:/usr/src/aircrack-ng-1.1# nano common.mak
+把 -Werror 删除
+
+OPTFLAGS        = -D_FILE_OFFSET_BITS=64
+CFLAGS          ?= -g -W -Wall -Werror -O3
+CFLAGS          += $(OPTFLAGS) $(REVFLAGS) $(COMMON_CFLAGS)
+
+OPTFLAGS        = -D_FILE_OFFSET_BITS=64
+CFLAGS          ?= -g -W -Wall -O3
+CFLAGS          += $(OPTFLAGS) $(REVFLAGS) $(COMMON_CFLAGS)
+
+root@ihost:/usr/src/aircrack-ng-1.1# make
+root@ihost:/usr/src/aircrack-ng-1.1# make install
+root@ihost:/usr/src/aircrack-ng-1.1# airodump-ng-oui-update
+root@ihost:/usr/src/aircrack-ng-1.1#
+
+
+13，安装 winpcap
+root@ihost:/usr/src# unzip 4.1.1-WpcapSrc.zip
+root@ihost:/usr/src# cd winpcap/wpcap/libpcap
+root@ihost:/usr/src/winpcap/wpcap/libpcap#  chmod 755 confi*
+root@ihost:/usr/src/winpcap/wpcap/libpcap# chmod 755 runlex.sh
+root@ihost:/usr/src/winpcap/wpcap/libpcap# ./configure
+root@ihost:/usr/src/winpcap/wpcap/libpcap#  make shared
+root@ihost:/usr/src/winpcap/wpcap/libpcap#  make install-shared
+root@ihost:/usr/src/winpcap/wpcap/libpcap#
+
+root@ihost:/usr/src# rm -rf `ls -I ihostupd`
+
+# github : in /usr/src/ 
+git clone https://github.com/unissoft-bj/ihost.git
+#git clone git@github.com:unissoft-bj/ihost.git
+
+
+创建数据库
+
+=====================================
+radius
+=====================================
+#1, 创建数据库radius
+#2, 创建表结构
+#3, 创建数据库用户
+#4, 创建登录用户
+echo "create database radius;" | mysql -uroot -prootatussp
+mysql -uroot -prootatussp radius < /etc/freeradius/sql/mysql/schema.sql
+mysql -uroot -prootatussp radius < /etc/freeradius/sql/mysql/admin.sql
+echo "insert into radcheck (username, attribute, op, value) values ('user1', 'Cleartext-Password', ':=', 'password');" | mysql -uroot -prootatussp radius
+
+=====================================
+wlsp
+=====================================
+#1, 创建数据库wlsp
+#2, 创建表结构(base.sql为基本表.ihost.sql为ihost上的视图、触发器（iserver不用）)
+#3, 创建数据库用户
+#预置root远程访问sql server的权力
+echo "create database wlsp;" | mysql -uroot -prootatussp
+mysql -uroot -prootatussp  wlsp <  /usr/src/ihost/db.schema/wlsp.sys.base.sql
+mysql -uroot -prootatussp  wlsp < /usr/src/ihost/db.schema/wlsp.sys.ihost.sql
+mysql -uroot -prootatussp  wlsp <  /usr/src/ihost/db.schema/wlsp.sys.users.sql
+echo "GRANT ALL PRIVILEGES ON *.* TO root@'%' IDENTIFIED BY 'rootatussp'; " | mysql -uroot -prootatussp 
+echo "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%'WITH GRANT OPTION; " | mysql -uroot -prootatussp
+echo "FLUSH PRIVILEGES; "| mysql -uroot -prootatussp
+
+# prepare www website and admin website
+#mkdir /var/www
+echo "hello" > /var/www/index.html
+echo "<?php phpinfo(); ?>" > /var/www/test.php
+
+mkdir /opt/id-images
+mkdir /opt/id-images/admin
+echo "hello" > /opt/id-images/index.html
+echo "<?php phpinfo(); ?>" > /opt/id-images/test.php
+echo "AuthName \"Please Login\"
+AuthType basic
+AuthUserFile /opt/id-images/admin/.htpasswd
+require valid-user"  >  /opt/id-images/.htaccess
+echo "admin:\$apr1\$45Dzcwa6\$tlorTc/ulQtOPX2bWhamJ." > /opt/id-images/admin/.htpasswd
+
+cp  /usr/src/ihostupd/apache/wlsite  /etc/apache2/sites-available/wlsite
+cp  /usr/src/ihostupd/apache/adminsite   /etc/apache2/sites-available/adminsite
+cp  /etc/apache2/ports.conf  /etc/apache2/ports.conf.bak
+echo "NameVirtualHost *:8181
+Listen 8181" >>  /etc/apache2/ports.conf
+unlink  /etc/apache2/sites-enabled/000-default
+ln  -sf  /etc/apache2/sites-available/wlsite  /etc/apache2/sites-enabled/000-default
+ln  -sf  /etc/apache2/sites-available/adminsite  /etc/apache2/sites-enabled/001-admin
+
+sync
+基本系统已经完成，可以访问两个站点：http://ihost-ip/ http://ihost-ip:8181/
+此处备份了image文件ihost.base.1120.img，在另一台linux box上:
+# make sure at lease 4G free space to place the image
+umount /dev/sda1
+umount /dev/sda2
+nohup  dd  if=/dev/sda  of=ihost.base.1120.img  bs=512  count=7495680
+# "fdisk -l" to determine "bs" value and "count" value
+# root@ihost:~# fdisk -l
+# Disk /dev/sda: 15.9 GB, 15931539456 bytes
+# 64 heads, 32 sectors/track, 15193 cylinders, total 31116288 sectors
+# Units = sectors of 1 * 512 = 512 bytes
+# Sector size (logical/physical): 512 bytes / 512 bytes
+# I/O size (minimum/optimal): 512 bytes / 512 bytes
+# Disk identifier: 0x000b5098
+
+#        Device Boot      Start         End      Blocks   Id  System
+#/dev/sda1            8192      122879       57344    c  W95 FAT32 (LBA)
+#/dev/sda2          122880     7495679     3686400   83  Linux
+
+
+# check default status
+ps  aux  | grep  mysql
+ps  aux  | grep  apache2 
+ps  aux  | grep  freeradius
+ps  aux  | grep  hostapd
+ps  aux  | grep  chilli
+ps  aux  | grep  dnsmasq
+ps  aux  | grep  squid3
+
+
+
+创建数据和程序的磁盘分区
+
+root@ihost:~# fdisk /dev/mmcblk0
+
+Command (m for help): p
+Disk /dev/mmcblk0: 15.9 GB, 15931539456 bytes
+4 heads, 16 sectors/track, 486192 cylinders, total 31116288 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk identifier: 0x000b5098
+        Device Boot      Start         End      Blocks   Id  System
+/dev/mmcblk0p1            8192      122879       57344    c  W95 FAT32 (LBA)
+/dev/mmcblk0p2          122880     7495679     3686400   83  Linux
+Command (m for help): n
+Partition type:
+   p   primary (2 primary, 0 extended, 2 free)
+   e   extended
+Select (default p): p
+Partition number (1-4, default 3): 3
+First sector (2048-31116287, default 2048): 7495680
+Last sector, +sectors or +size{K,M,G} (7495680-31116287, default 31116287): +200M
+Command (m for help): t      # For B+ pi, skip the t step, otherwise, pi cannot be booted. Go to line 290.
+Partition number (1-4): 3
+Hex code (type L to list codes): 83
+Command (m for help): w
+The partition table has been altered!
+Calling ioctl() to re-read partition table.
+WARNING: Re-reading the partition table failed with error 16: Device or resource busy.
+The kernel still uses the old table. The new table will be used at
+the next reboot or after you run partprobe(8) or kpartx(8)
+Syncing disks.
+root@ihost:~# reboot
+
+mke2fs -b 4096 -t ext4 /dev/mmcblk0p3
+e2label /dev/mmcblk0p3 data
+sync
+mkdir  /media/data
+echo "/dev/mmcblk0p3 /media/data ext4 defaults 0 2" >> /etc/fstab
+#on ihoste#echo "/dev/mmcblk0p2 /media/data ext4 defaults 0 2" >> /etc/fstab
+mount -a
+
+
+
+# github : in /usr/src/ihost
+git pull
+cp  -r  /usr/src/ihost  /media/data/ihost
+
+#(on ihoste) for NMdnsmasq 
+#cp  /etc/NetworkManager/NetworkManager.conf  /etc/NetworkManager/NetworkManager.conf.bak
+#sed  -i  's/dns=dnsmasq/#dns=dnsmasq/g'   /etc/NetworkManager/NetworkManager.conf
+
+# for dnsmasq
+cp  /etc/default/dnsmasq  /etc/default/dnsmasq.bak
+sed  -i  's/#IGNORE_RESOLVCONF=yes/IGNORE_RESOLVCONF=yes/g'  /etc/default/dnsmasq
+mv  /etc/dnsmasq.conf  /etc/dnsmasq.conf.bak
+ln -sf /media/data/ihost/system/dnsmasq/dnsmasq.conf   /etc/dnsmasq.conf
+# upstream dns servers
+ln -sf /media/data/ihost/system/dnsmasq/resolv.dnsmasq.conf   /etc/resolv.dnsmasq.conf 
+# dhcp server
+#ln -s /media/data/ihost/system/dnsmasq/dnsmasq.custom.conf   /etc/dnsmasq.d/dnsmasq.custom.conf 
+
+
+# for php5
+cp /etc/php5/fpm/pool.d/www.conf  /etc/php5/fpm/pool.d/www.conf.bak
+sed  -i  "s|listen = /var/run/php5-fpm.sock|listen = 127.0.0.1:9000|g"  /etc/php5/fpm/pool.d/www.conf
+
+# ipforword
+cp  /etc/sysctl.conf  /etc/sysctl.conf.bak
+sed  -i  "s|#net.ipv4.ip_forward=1|net.ipv4.ip_forward=1|g"   /etc/sysctl.conf
+
+# interfaces & iptables
+touch /etc/iptables.ipv4.nat
+mv  /etc/network/interfaces  /etc/network/interfaces.bak
+ln  -sf  /media/data/ihost/system/base/interfaces.eth   /etc/network/interfaces
+ln  -sf  /media/data/ihost/system/base/iptab.sh.eth  /root/iptab.sh
+bash  /media/data/ihost/system/base/iptab.sh.eth
+#hotspot# ln  -sf  /media/data/ihost/system/base/interfaces.wlan   /etc/network/interfaces
+#hotspot# ln  -sf  /media/data/ihost/system/base/iptab.sh.wlan  /root/iptab.sh
+#hotspot# bash  /media/data/ihost/system/base/iptab.sh.wlan
+
+# local dns server
+mv  /etc/resolv.conf  /etc/resolv.conf.bak
+cp  /media/data/ihost/system/base/resolv.conf  /etc/resolv.conf
+#ihoste# mv  /etc/resolvconf/resolv.conf.d/original  /etc/resolvconf/resolv.conf.d/original.bak
+#ihoste# ln -s /media/data/ihost/system/base/original.lcldns   /etc/resolvconf/resolv.conf.d/original
+
+
+# database files
+#not used# mv  /var/lib/mysql/wlsp  /var/lib/mysql/wlsp.bak
+#not used# ln  -sf  /media/data/ihost/db/wlsp   /var/lib/mysql/wlsp 
+#not used# chown -R  mysql:mysql  /var/lib/mysql/wlsp
+#not used# chown -R  mysql:mysql  /media/data/ihost/db/wlsp
+#not used# mysql -uroot -prootatussp  wlsp <  /usr/src/ihost/db.schema/wlsp.sys.base.sql
+#not used# mysql -uroot -prootatussp  wlsp < /usr/src/ihost/db.schema/wlsp.sys.ihost.sql
+#not used# mysql -uroot -prootatussp  wlsp <  /usr/src/ihost/db.schema/wlsp.sys.users.sql
+#not used# mv  /var/lib/mysql/radius  /var/lib/mysql/radius.bak
+#not used# ln  -sf  /media/data/ihost/db/radius   /var/lib/mysql/radius
+#not used# chown -R  mysql:mysql  /var/lib/mysql/radius
+#not used# chown -R  mysql:mysql  /media/data/ihost/db/radius
+# change data dir to /media/data/ihost/db
+cp  -r  /var/lib/mysql/*  /media/data/ihost/db/
+chown  -R  mysql:mysql  /media/data/ihost/db
+sed -i 's|/var/lib/mysql|/media/data/ihost/db|g' /etc/mysql/my.cnf
+
+
+# www website & admin websit
+mv  /etc/apache2/sites-available/wlsite  /etc/apache2/sites-available/wlsite.bak
+ln  -sf  /media/data/ihost/system/apache/wlsite  /etc/apache2/sites-available/wlsite
+mv  /var/www  /var/www.bak
+ln  -sf  /media/data/ihost/home.www   /var/www
+mv  /etc/apache2/sites-available/adminsite  /etc/apache2/sites-available/adminsite.bak
+ln  -sf  /media/data/ihost/system/apache/adminsite   /etc/apache2/sites-available/adminsite
+mv  /opt/id-images  /opt/id-images.bak
+ln  -sf  /media/data/ihost/home.admin   /opt/id-images
+chown -R www-data:www-data /opt/id-images/admin/tmpfile
+cp /opt/id-images/admin/sys/localdnsget.php  /opt/id-images/admin/sys/ldnsget.php
+cp /opt/id-images/admin/sys/localdnsset.php  /opt/id-images/admin/sys/ldnsset.php
+#on ihoste# cp /opt/id-images/admin/sys/locdnsget.php  /opt/id-images/admin/sys/ldnsget.php
+#on ihoste# cp /opt/id-images/admin/sys/locdnsset.php  /opt/id-images/admin/sys/ldnsset.php
+
+# sudoers
+cp  /etc/sudoers  /etc/sudoers.bak
+echo "www-data ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+#php url push# echo "proxy ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+# crontab job
+cp  /var/spool/cron/crontabs/root  /var/spool/cron/crontabs/root.bak
+echo "30 3 * * * sudo reboot" >> /var/spool/cron/crontabs/root
+chown  root:crontab  /var/spool/cron/crontabs/root
+chmod 600 /var/spool/cron/crontabs/root
+
+# mysql
+mv  /etc/mysql/my.cnf  /etc/mysql/my.cnf.bak
+ln  -sf  /media/data/ihost/system/mysql/my.cnf.deny  /etc/mysql/my.cnf
+#ln  -sf  /media/data/ihost/system/mysql/my.cnf.allow  /etc/mysql/my.cnf
+
+# freeradius
+mv  /etc/freeradius/radiusd.conf  /etc/freeradius/radiusd.conf.bak
+ln  -sf  /media/data/ihost/system/freeradius/radiusd.conf  /etc/freeradius/radiusd.conf
+mv  /etc/freeradius/sites-available/default  /etc/freeradius/sites-available/default.bak
+cp  /media/data/ihost/system/freeradius/default /etc/freeradius/sites-available/default
+mv  /etc/freeradius/clients.conf  /etc/freeradius/clients.conf.bak
+ln  -sf  /media/data/ihost/system/freeradius/clients.conf  /etc/freeradius/clients.conf
+cp  /etc/freeradius/users  /etc/freeradius/users.bak
+echo 'user1  Cleartext-Password := "password"'  >>  /etc/freeradius/users
+
+# hostapd
+cp  /etc/default/hostapd  /etc/default/hostapd.bak
+sed  -i  's|#DAEMON_CONF=""|DAEMON_CONF="/etc/hostapd/hostapd.conf"|g'  /etc/default/hostapd
+ln  -sf  /media/data/ihost/system/hostapd/hostapd.conf  /etc/hostapd/hostapd.conf
+
+# coova chilli
+mv  /etc/chilli/defaults  /etc/chilli/defaults.bak
+ln  -sf  /media/data/ihost/system/chilli/defaults.eth  /etc/chilli/defaults
+mv  /etc/chilli/www/chilliController.js  /etc/chilli/www/chilliController.js.bak
+ln  -sf  /media/data/ihost/system/chilli/chilliController.js  /etc/chilli/www/chilliController.js
+cp  /etc/chilli/up.sh  /etc/chilli/up.sh.bak
+echo "iptables -t filter -I INPUT  -j ACCEPT" >> /etc/chilli/up.sh
+mv  /etc/chilli/wwwsh  /etc/chilli/wwwsh.bak
+chmod  +x  /media/data/ihost/system/chilli/wwwsh
+ln  -sf /media/data/ihost/system/chilli/wwwsh /etc/chilli/wwwsh
+mv  /etc/chilli/www/json_html.tmpl  /etc/chilli/www/json_html.tmpl.bak
+cp  /media/data/ihost/system/chilli/json_html.tmpl  /etc/chilli/www/json_html.tmpl
+cp  /media/data/ihost/system/chilli/ihost.html  /etc/chilli/www/ihost.html
+
+# wireless packet capture
+ln  -sf /media/data/ihost/wlcap/wlsetcap.sh /root/wlsetcap.sh
+echo "@reboot sudo bash /root/wlsetcap.sh &" >> /var/spool/cron/crontabs/root
+
+#rpcap on ihost# mv  /usr/lib/arm-linux-gnueabihf/libpcap.so.0.8  /usr/lib/arm-linux-gnueabihf/libpcap.so.0.8.bak
+#rpcap on ihost# ln  -sf  /usr/local/lib/libpcap.so.1.0.0  /usr/lib/arm-linux-gnueabihf/libpcap.so.0.8
+##rpcap on ihoste# mv  /usr/lib/arm-linux-gnueabi/libpcap.so.0.8  libpcap.so.0.8.bak
+##rpcap on ihoste# ln -sf  /usr/local/lib/libpcap.so.1.0.0  /usr/lib/arm-linux-gnueabi/libpcap.so.0.8
+#rpcap# ln  -sf  /media/data/ihost/wlcap/srksreset.py  /root/srks.py
+#rpcap# echo "@reboot sudo python /root/srksreset.py &" >> /var/spool/cron/crontabs/root
+#rpcap# ln  -sf  /media/data/ihost/wlcap/srks.py  /root/srks.py
+#rpcap# echo "*/2 * * * * sudo python /root/srks.py &" >> /var/spool/cron/crontabs/root
+
+ln  -sf  /media/data/ihost/wlcap/config.xml  /root/config.xml
+ln  -sf  /media/data/ihost/wlcap/filter.xml  /root/filter.xml
+ln  -sf  /media/data/ihost/wlcap/rdpp.py  /root/rdpp.py
+ln  -sf  /media/data/ihost/wlcap/wdog.py  /root/wdog.py
+echo "*/5 * * * * sudo python /root/wdog.py &" >> /var/spool/cron/crontabs/root
+
+ln  -sf  /media/data/ihost/wlcap/configauth.xml  /root/configauth.xml
+ln  -sf  /media/data/ihost/wlcap/onsite.py  /root/onsite.py
+echo "*/1 * * * * sudo python /root/onsite.py &" >> /var/spool/cron/crontabs/root
+ln  -sf  /media/data/ihost/wlcap/onsitechk.py  /root/onsitechk.py
+echo "*/2 * * * * sudo python /root/onsitechk.py &" >> /var/spool/cron/crontabs/root
+ln  -sf  /media/data/ihost/wlcap/smspush.py  /root/smspush.py
+echo "*/1 * * * * sudo python /root/smspush.py &" >> /var/spool/cron/crontabs/root
+ln  -sf  /media/data/ihost/wlcap/greeting.py  /root/greeting.py
+echo "0 */6 * * * sudo python /root/greeting.py &" >> /var/spool/cron/crontabs/root
+
+
+# network action logger
+ln  -sf  /media/data/ihost/netcap/configact.xml /root/configact.xml 
+ln  -sf  /media/data/ihost/netcap/nlogger.py  /root/nlogger.py
+ln  -sf  /media/data/ihost/netcap/ndog.py  /root/ndog.py
+echo "*/5 * * * * sudo python /root/ndog.py &" >> /var/spool/cron/crontabs/root
+
+# sendsms (with local huawei e173 stick)
+mv  /usr/bin/gammu-config  /usr/bin/gammu-config.bak
+cp  /media/data/ihost/system/gammu/gammu-config  /usr/bin
+cp  /media/data/ihost/system/gammu/.gammurc  /root 
+mv  /etc/usb_modeswitch.conf   /etc/usb_modeswitch.conf.bak
+ln  -sf  /media/data/ihost/system/usbmode/usb_modeswitch.conf  /etc/usb_modeswitch.conf
+ln  -sf  /media/data/ihost/system/usbmode/huawei.sh  /root/huawei.sh
+chmod 755 /root/huawei.sh
+echo "@reboot sudo bash /root/huawei.sh &" >> /var/spool/cron/crontabs/root
+ln  -sf  /media/data/ihost/wlcap/sendsms.py  /root/sendsms.py
+echo "@reboot sudo python /root/sendsms.py &" >> /var/spool/cron/crontabs/root
+
+
+# sendsms (with upstream sms server)
+#ln  -sf  /media/data/ihost/smssvc/smsupload.xml /root/smsupload.xml 
+#ln  -sf  /media/data/ihost/smssvc/sms2iserver.py /root/sms2iserver.py
+#echo "@reboot sudo python /root/sms2iserver.py &" >> /var/spool/cron/crontabs/root
+# sms to sms server from ihost
+ln  -sf  /media/data/ihost/smssvc/sms2sserver.py  /root/sms2sserver.py
+ln  -sf  /media/data/ihost/smssvc/sms2sserver.xml  /root/sms2sserver.xml
+echo "@reboot sudo python /root/sms2sserver.py &" >> /var/spool/cron/crontabs/root
+
+
+# ihost data to iserver
+ln  -sf  /media/data/ihost/datasvc/wlspupload.xml /root/wlspupload.xml 
+ln  -sf  /media/data/ihost/datasvc/wlsp2iserver.py /root/wlsp2iserver.py
+echo "@reboot sudo python /root/wlsp2iserver.py &" >> /var/spool/cron/crontabs/root
+
+# on ihoste working led (ihoste ====> for UDoo)
+#ln  -sf  /media/data/ihost/system/base/blink.sh   /root/blink.sh
+#echo " @reboot bash blink.sh &" >> /var/spool/cron/crontabs/root
+
+# nodename & services
+ln  -sf  /media/data/ihost/system/base/node  /root/node # id in ihosts-iserver archite
+insserv -r  hostapd # shut down hostapd, no hotspot by default
+insserv -r  squid3 # shut down squiid3 by default
+insserv -f  chilli # open chilli
+
+#此处做了备份 ihost.sys.1121.img
+#note: "chmod  +x  /usr/bin/wlcap" after burning sd card from this image 
+root@ihost:/media/ihostdata# fdisk -l
+
+Disk /dev/sda: 15.9 GB, 15931539456 bytes
+64 heads, 32 sectors/track, 15193 cylinders, total 31116288 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk identifier: 0x000b5098
+
+   Device Boot      Start         End      Blocks   Id  System
+/dev/sda1            8192      122879       57344    c  W95 FAT32 (LBA)
+/dev/sda2          122880     7495679     3686400   83  Linux
+/dev/sda3         7495680     7905279      204800   83  Linux
+root@ihost:/media/ihostdata# umount /dev/sda1
+root@ihost:/media/ihostdata# umount /dev/sda2
+root@ihost:/media/ihostdata# umount /dev/sda3
+root@ihost:/media/ihostdata# nohup  dd  if=/dev/sda  of=ihost.sys.1121.img  bs=512  count=7905280
+nohup: ignoring input and appending output to `nohup.out'
+
+#new files introuduced(till 2014-12-1)
+#standalone config file for rucks ap remote admin
+ln  -sf  /media/data/ihost/wlcap/configsrks.xml  /root/configsrks.xml
+#user integral module
+ln  -sf  /media/data/ihost/userpnt/configpnt.xml  /root/configpnt.xml
+ln  -sf  /media/data/ihost/userpnt/sta2pnt.py  /root/sta2pnt.py
+ln  -sf  /media/data/ihost/userpnt/pnt2user.py  /root/pnt2user.py
+# setup cron job
+echo "*/1 * * * * sudo python /root/sta2pnt.py &" >> /var/spool/cron/crontabs/root
+echo "*/10 * * * * sudo python /root/pnt2user.py &" >> /var/spool/cron/crontabs/root
+
+#user data to iserver
+ln  -sf  /media/data/ihost/datasvc/userupload.xml /root/userupload.xml 
+ln  -sf  /media/data/ihost/datasvc/user2iserver.py /root/user2iserver.py
+echo "@reboot sudo python /root/user2iserver.py &" >> /var/spool/cron/crontabs/root
+
+#order data to iserver
+ln  -sf  /media/data/ihost/datasvc/order2iserver.py  /root/order2iserver.py
+ln  -sf  /media/data/ihost/datasvc/orderupload.xml  /root/orderupload.xml
+echo "@reboot sudo python /root/order2iserver.py &" >> /var/spool/cron/crontabs/root
+
+
+# post installation
+#nano /root/node # give ihost an unique nodename
+                # "ifconfig eth0" to get nodemac & ip
+#nano /root/wlspupload.xml # "sender" should be the same as nodename
+# sed -i 's|sender="node011"|sender="test-office-1"|g' /root/wlspupload.xml 
+# if sms is sended by iserver
+#nano /root/smsupload.xml # "sender" should be the same as nodename
+
+nano /root/configact.xml # "not ether src 00:c0:08:88:25:b6" replace mac with eth0's value
+#nano /root/config.xml # host="192.168.0.128" replace ip with eth0's value
+
+
+# switch to hotspot mode 
+# issue an ssid named ihost for wireless client
+# Get the ihost.hotspot.on script from github. ATTN: copy and paste
+# location: https://github.com/caiwang/ihostsrc/blob/master/ihost.hotspot.on
+
+excute command "ihost.hotspot.on" on your pi
+
+# switch to non-hotspot default mode
+# wireless client connection is maded by a wireless router
+
+excute command "ihost.hotspot.off" on your pi
+
+# brief testing
+1, scan ssid for "ihost" or whatever name issued by wireless router
+2, connect to the ssid, get ip address, and pushed to the /auth/ihost.php
+3, open "http://ihost-ip:8181" with admin/admin
+4, check wireless stations captured
+5, check network visiting logged
+6, login to iserver, check data upload from ihost to iserver
+ 
+ 
+--------------------------------------------------- 
+# 默认自启动的服务
+dnsmasq
+mysql
+freeradius
+apache2
+squid
+
+# 没有自动启动的服务
+hostapd # hostapd will autostart with config files come from github
+chilli
+
+------------------------------------------------
+关services
+update-rc.d -f freeradius remove
+update-rc.d -f hostapd remove
+update-rc.d -f dnsmasq remove
+update-rc.d -f squid3 remove
+#on ihoste#echo manual > /etc/init/squid3.override
+
+开services
+update-rc.d freeradius defaults
+update-rc.d hostapd defaults
+update-rc.d dnsmasq defaults 
+#on ihoste#rm /etc/init/squid3.override
+
