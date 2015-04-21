@@ -1,0 +1,481 @@
+###### Part 1 : Installation
+
+### download image: Official UDOO Distribution lubuntu 12.04 LTS armHF based; write SD Card; boot up
+http://download.udoo.org/files/UDOO_Unico/Quad_img/UDOObuntu_img/UDOObuntu_quad_v1.1.zip
+# or
+https://sourceforge.net/projects/udooboard/files/UDOO_Quad/UDOObuntu/UDOObuntu_quad_v1.1.zip/download
+
+### login
+ubuntu  ubuntu
+
+### basic setup
+sudo passwd root
+# rootatusspsp
+su - root
+dpkg-reconfigure tzdata
+# 'Asia/Shanghai'
+apt-get update
+apt-get upgrade
+sed -i 's/udoobuntu/ihost/g' /etc/hostname
+sed -i 's/udoobuntu/ihost/g' /etc/hosts
+uname -a
+# Linux udoobuntu 3.0.35 #7 SMP PREEMPT Thu Jul 3 15:12:59 CEST 2014 armv7l armv7l armv7l GNU/Linux
+ls -la /etc/udev/rules.d/
+cat /etc/udev/rules.d/70-persistent-cd.rules 
+
+e2label /dev/mmcblk0p1 ihost
+sync
+
+reboot
+
+### login
+root rootatusspsp
+
+### get source packages & binary
+apt-get install -y git
+cd /usr/src
+git clone -b udoo https://github.com/caiwang/ihostsrc.git
+
+
+### kernel compile
+apt-get install -y build-essential ncurses-dev uboot-mkimage
+# Errors were encountered while processing:
+#  /var/cache/apt/archives/u-boot-tools_2011.09-2_armhf.deb
+#dpkg -i --force-overwrite /var/cache/apt/archives/u-boot-tools_2011.09-2_armhf.deb
+#apt-get -f install
+#apt-get -y install build-essential ncurses-dev uboot-mkimage git
+
+cd /usr/src
+git clone https://github.com/UDOOboard/Kernel_Unico kernel-ihost
+cd kernel-ihost/
+
+cp  /usr/src/ihostsrc/compiled/kernel-ihost/.config  .config
+make ARCH=arm menuconfig
+cd scripts/
+chmod +x setsecoversion
+cd ..
+
+nohup make -j5 uImage modules
+cat /usr/src/kernel-ihost/nohup.out  | grep uImage
+#   UIMAGE  arch/arm/boot/uImage
+#   Image arch/arm/boot/uImage is ready
+
+## or directly use compiled kernel
+###cd /usr/src/ihostsrc/compiled/kernel-ihost
+cp /boot/uImage /boot/uImage.bak
+cp arch/arm/boot/uImage /boot/
+make modules_install
+mv /usr/include/linux  /usr/include/linux.bak
+#cp -r /usr/src/kernel-ihost/include/linux /usr/include/linux
+cp -r include/linux /usr/include/linux
+
+cd /root
+
+
+### install software package
+# common
+apt-get install -y mysql-server python-mysqldb  python-pexpect dos2unix
+# root 0ffs4t?
+
+# sniffer
+apt-get install -y tshark iw
+
+# for winpcap complie
+apt-get install -y libpcap-dev flex bison
+
+# sms
+apt-get install -y gammu python-gammu
+
+# coova compile
+apt-get install -y debhelper libssl-dev libcurl4-gnutls-dev
+
+# dns
+apt-get install -y dnsmasq dnsutils
+
+# curl client for python,
+apt-get install -y libgtk2.0-dev python-requests
+
+# get network interfaces from python
+apt-get install -y python-netifaces
+
+# reserved
+apt-get install -y hostapd
+apt-get install -y vlan
+
+
+### install coova
+cp  /usr/src/ihostsrc/compiled/coova-chilli_1.3.0_armhf.deb  /usr/src
+cd  /usr/src
+dpkg -i coova-chilli_1.3.0_armhf.deb
+
+### install haserl
+cp  /usr/src/ihostsrc/board_udoo/package_source/haserl-0.9.30.tar.gz  /usr/src
+cd  /usr/src
+tar xzf haserl-0.9.30.tar.gz
+cd haserl-0.9.30/
+./configure
+make && make install
+
+### install libpcap
+cp  /usr/src/ihostsrc/compiled/libpcap.so.1.0.0  /usr/local/lib/
+cd  /usr/src
+mv  /usr/lib/arm-linux-gnueabihf/libpcap.so.0.8  /usr/lib/arm-linux-gnueabihf/libpcap.so.0.8.bak
+ln  -sf  /usr/local/lib/libpcap.so.1.0.0  /usr/lib/arm-linux-gnueabihf/libpcap.so.0.8
+# switch back
+#unlink  /usr/lib/arm-linux-gnueabihf/libpcap.so.0.8
+#mv  /usr/lib/arm-linux-gnueabihf/libpcap.so.0.8.bak  /usr/lib/arm-linux-gnueabihf/libpcap.so.0.8
+
+### install java 8
+cd  /usr/src
+wget http://www.oracle.com/technetwork/java/javase/downloads/jdk8-arm-downloads-2187472.html
+# or : cd path-to-jdk
+#cp jdk-8u33-linux-arm-vfp-hflt.tar.gz /usr/src
+cd  /usr/src
+tar zxvf jdk-8u33-linux-arm-vfp-hflt.tar.gz -C /opt
+update-alternatives --install /usr/bin/javac javac /opt/jdk1.8.0_33/bin/javac 1
+update-alternatives --install /usr/bin/java java /opt/jdk1.8.0_33/bin/java 1
+update-alternatives --config javac
+update-alternatives --config java
+java -version
+# java version "1.8.0_33"
+echo $JAVA_HOME
+set JAVA_HOME=/opt/jdk1.8.0_33/
+echo $JAVA_HOME
+ 
+### wlcap
+cp  /usr/src/ihostsrc/board_udoo/package_binary/wlcap  /usr/bin/wlcap
+chmod  +x  /usr/bin/wlcap
+
+### insserv fix
+ln  -sf  /usr/lib/insserv/insserv  /sbin/insserv
+
+### use resolvconf
+dpkg-reconfigure resolvconf   
+ls -l /etc/resolv.conf
+# lrwxrwxrwx 1 root root 29 Apr  5 11:02 /etc/resolv.conf -> ../run/resolvconf/resolv.conf
+
+### clear up
+rm  -rf  /urs/src/ihostsrc 
+
+
+###### Part 2 : Configuration
+
+
+### dnsmasq
+# stop NetworkManager's dnsmasq 
+cat /etc/NetworkManager/NetworkManager.conf | grep dnsmasq
+# dns=dnsmasq
+sed  -i  's/dns=dnsmasq/#dns=dnsmasq/g'   /etc/NetworkManager/NetworkManager.conf
+cat /etc/NetworkManager/NetworkManager.conf | grep dnsmasq
+#  #dns=dnsmasq
+
+# upstream dns server : not use resolvconf
+cat /etc/default/dnsmasq  | grep IGNORE_RESOLVCONF
+#  #IGNORE_RESOLVCONF=yes
+sed  -i  's|#IGNORE_RESOLVCONF=yes|IGNORE_RESOLVCONF=yes|g'  /etc/default/dnsmasq
+cat /etc/default/dnsmasq  | grep IGNORE_RESOLVCONF
+#  IGNORE_RESOLVCONF=yes
+
+# upstream dns server : use resolv-file
+cat >> /etc/resolv.dnsmasq.conf  <<EOF
+nameserver 192.168.100.100
+EOF
+
+cat /etc/resolv.dnsmasq.conf 
+# nameserver 192.168.100.100
+cat  /etc/dnsmasq.conf | grep resolv-file
+# #resolv-file=
+sed -i 's|#resolv-file=|resolv-file=/etc/resolv.dnsmasq.conf|g' /etc/dnsmasq.conf
+cat  /etc/dnsmasq.conf | grep resolv-file
+# resolv-file=/etc/resolv.dnsmasq.conf
+
+# setup listen address
+cat  /etc/dnsmasq.conf | grep listen-address
+# #listen-address=
+sed -i 's|#listen-address=|listen-address=172.16.0.1,127.0.0.1|g' /etc/dnsmasq.conf
+cat  /etc/dnsmasq.conf | grep listen-address
+# listen-address=172.16.0.1,127.0.0.1
+
+# check strict-order & no-hosts
+cat  /etc/dnsmasq.conf | grep strict-order
+# #strict-order
+cat  /etc/dnsmasq.conf | grep no-hosts      
+# #no-hosts
+
+# dns record for mtxwifi
+echo  'address=/mtxwifi.net/172.16.0.1'  >>  /etc/dnsmasq.conf
+# dns record for any websit (dns server works without internet connection)
+echo  '#address=/#/172.16.0.1'  >>  /etc/dnsmasq.conf
+# sed  -i  's|#address=/#/172.16.0.1|address=/#/172.16.0.1|g'  /etc/dnsmasq.conf
+# sed  -i  's|address=/#/172.16.0.1|#address=/#/172.16.0.1|g'  /etc/dnsmasq.conf
+cat  /etc/dnsmasq.conf | grep address=
+
+
+### ip address
+mv  /etc/network/interfaces  /etc/network/interfaces.bak
+
+cat >> /etc/network/interfaces <<EOF
+auto lo
+iface lo inet loopback
+
+auto eth0
+#iface eth0 inet dhcp
+#    name Ethernet alias WAN card
+iface eth0 inet static
+    name Ethernet alias WAN card
+    address 192.168.100.200 
+    netmask 255.255.255.0
+    network 192.168.100.0 
+    broadcast 192.168.100.255 
+    gateway 192.168.100.100 
+
+auto eth0:9
+iface eth0:9 inet static
+    name Ethernet alias MAN card
+    address 192.168.254.254
+    netmask 255.255.255.0
+    network 192.168.254.0
+    broadcast 192.168.254.255
+
+auto eth0:10
+iface eth0:10 inet static
+    name Ethernet alias LAN card
+    address 172.16.0.1
+    netmask 255.255.0.0
+    network 172.16.0.0
+    broadcast 172.16.255.255
+
+EOF
+
+cat /etc/network/interfaces
+
+
+### iptables
+# open iptables
+cat /etc/sysctl.conf | grep net.ipv4.ip_forward=
+# #net.ipv4.ip_forward=1
+sed  -i  's|#net.ipv4.ip_forward=1|net.ipv4.ip_forward=1|g'  /etc/sysctl.conf
+cat /etc/sysctl.conf | grep net.ipv4.ip_forward=
+# net.ipv4.ip_forward=1
+
+# setup iptables, and save iptables to '/etc/iptables.ipv4.nat'
+iptables -F
+iptables -X
+iptables -t nat -F
+iptables -t nat -X
+iptables -t mangle -F
+iptables -t mangle -X
+
+iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+iptables -A FORWARD -i eth0 -o eth0:10 -m state --state RELATED,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -i eth0:10 -o eth0 -j ACCEPT
+iptables -t nat -I PREROUTING -d 10.16.0.0/16 -p tcp --dport 80 -j ACCEPT
+
+sh -c "iptables-save > /etc/iptables.ipv4.nat"
+
+# call iptables in /etc/network/interfaces
+echo 'up iptables-restore < /etc/iptables.ipv4.nat' >> /etc/network/interfaces
+cat /etc/network/interfaces
+
+
+
+### coova chilli
+# enable chilli
+cat /etc/default/chilli | grep START_CHILLI=
+# START_CHILLI=0
+sed -i 's|START_CHILLI=0|START_CHILLI=1|g' /etc/default/chilli
+cat /etc/default/chilli | grep START_CHILLI=
+# START_CHILLI=1
+
+
+
+# get chilli default config
+cat /etc/chilli/defaults | grep HS_WANIF=
+# # HS_WANIF=eth0            # WAN Interface toward the Internet
+cat /etc/chilli/defaults | grep HS_LANIF=
+# HS_LANIF=eth1              # Subscriber Interface for client devices
+cat /etc/chilli/defaults | grep HS_NETWORK=
+# HS_NETWORK=10.1.0.0        # HotSpot Network (must include HS_UAMLISTEN)
+cat /etc/chilli/defaults | grep HS_NETMASK=
+# HS_NETMASK=255.255.255.0   # HotSpot Network Netmask
+cat /etc/chilli/defaults | grep HS_UAMLISTEN=
+# HS_UAMLISTEN=10.1.0.1      # HotSpot IP Address (on subscriber network)
+cat /etc/chilli/defaults | grep HS_DYNIP=
+# # HS_DYNIP=
+cat /etc/chilli/defaults | grep HS_DYNIP_MASK=
+# # HS_DYNIP_MASK=255.255.255.0
+cat /etc/chilli/defaults | grep HS_STATIP=
+# # HS_STATIP=
+cat /etc/chilli/defaults | grep HS_STATIP_MASK=
+# # HS_STATIP_MASK=255.255.255.0
+cat /etc/chilli/defaults | grep HS_DNS_DOMAIN=
+# # HS_DNS_DOMAIN=
+cat /etc/chilli/defaults | grep HS_DNS1=
+# HS_DNS1=208.67.222.222
+cat /etc/chilli/defaults | grep HS_DNS2=
+# HS_DNS2=208.67.220.220
+cat /etc/chilli/defaults | grep HS_UAMALLOW=
+# HS_UAMALLOW=www.coova.org
+cat /etc/chilli/defaults | grep HS_UAMDOMAINS=
+# # HS_UAMDOMAINS=".paypal.com,.paypalobjects.com"
+cat /etc/chilli/defaults | grep HS_UAMSERVER=
+# HS_UAMSERVER=$HS_UAMLISTEN
+cat /etc/chilli/defaults | grep HS_UAMFORMAT=
+# HS_UAMFORMAT=http://\$HS_UAMLISTEN:\$HS_UAMUIPORT/www/login.chi
+cat /etc/chilli/defaults | grep HS_UAMHOMEPAGE=
+# HS_UAMHOMEPAGE=http://\$HS_UAMLISTEN:\$HS_UAMPORT/www/coova.html
+
+
+# prepare ihost.html
+cp  /etc/chilli/www/coova.html  /etc/chilli/www/ihost.html
+sed  -i  's|<title>Coova</title>|<title>ihost</title>|g'  /etc/chilli/www/ihost.html 
+sed  -i  's|setTimeout(redirect, 5000);|setTimeout(redirect, 10);|g'  /etc/chilli/www/ihost.html 
+sed  -i  's|< vertical-align:middle;text-align:center;color:grey;">|< vertical-align:middle;text-align:left;color:grey;">|g'  /etc/chilli/www/ihost.html 
+sed  -i  's|<a href="#" onclick="javascript:return redirect();">||g'  /etc/chilli/www/ihost.html 
+sed  -i  's|<img src="coova.jpg" alt="" border="0" height="39" width="123"/></a>||g'  /etc/chilli/www/ihost.html 
+
+# prepare ihome.html
+echo 'Hello !' >  /etc/chilli/www/ihome.html
+
+# set chilli config in /etc/chilli/defaults
+sed  -i  's|# HS_WANIF=eth0|HS_WANIF=eth0|g'  /etc/chilli/defaults
+sed  -i  's|HS_LANIF=eth1|HS_LANIF=eth0:10|g'  /etc/chilli/defaults
+sed  -i  's|HS_NETWORK=10.1.0.0|HS_NETWORK=172.16.0.1|g'  /etc/chilli/defaults
+sed  -i  's|HS_NETMASK=255.255.255.0|HS_NETMASK=255.255.0.0|g'  /etc/chilli/defaults
+sed  -i  's|HS_UAMLISTEN=10.1.0.1|HS_UAMLISTEN=172.16.0.1|g'  /etc/chilli/defaults
+
+sed  -i  's|# HS_DYNIP=|HS_DYNIP=172.16.0.100|g'  /etc/chilli/defaults
+sed  -i  's|# HS_DYNIP_MASK=255.255.255.0|HS_DYNIP_MASK=255.255.0.0|g'  /etc/chilli/defaults
+sed  -i  's|# HS_STATIP=|HS_STATIP=172.16.0.10|g'  /etc/chilli/defaults
+sed  -i  's|# HS_STATIP_MASK=255.255.255.0|HS_STATIP_MASK=255.255.0.0|g'  /etc/chilli/defaults
+sed  -i  's|# HS_DNS_DOMAIN=|HS_DNS_DOMAIN=mtxwifi.net|g'  /etc/chilli/defaults
+
+sed  -i  's|HS_DNS1=208.67.222.222|HS_DNS1=172.16.0.1|g'  /etc/chilli/defaults
+sed  -i  's|HS_DNS2=208.67.220.220|HS_DNS2=202.99.166.4|g'  /etc/chilli/defaults
+sed  -i  's|HS_UAMALLOW=www.coova.org|HS_UAMALLOW=172.16.0.0/16,ntp.ruckuswireless.com|g'  /etc/chilli/defaults
+sed  -i  's|# HS_UAMDOMAINS=".paypal.com,.paypalobjects.com"|HS_UAMDOMAINS=".mtxwifi.com,.mtxwifi.net,.ruckuswireless.com"|g'  /etc/chilli/defaults
+sed  -i  's|HS_UAMSERVER=$HS_UAMLISTEN|HS_UAMSERVER=172.16.0.1|g'  /etc/chilli/defaults
+
+sed  -i  's|HS_UAMFORMAT=http://\\$HS_UAMLISTEN:\\$HS_UAMUIPORT/www/login.chi|HS_UAMFORMAT=http://\\$HS_UAMLISTEN:\\$HS_UAMUIPORT/www/ihome.html|g'  /etc/chilli/defaults
+sed  -i  's|HS_UAMHOMEPAGE=http://\\$HS_UAMLISTEN:\\$HS_UAMPORT/www/coova.html|HS_UAMHOMEPAGE=http://\\$HS_UAMLISTEN:\\$HS_UAMPORT/www/ihost.html|g'  /etc/chilli/defaults
+
+
+# check new config
+cat /etc/chilli/defaults | grep HS_WANIF=
+cat /etc/chilli/defaults | grep HS_LANIF=
+cat /etc/chilli/defaults | grep HS_NETWORK=
+cat /etc/chilli/defaults | grep HS_NETMASK=
+cat /etc/chilli/defaults | grep HS_UAMLISTEN=
+cat /etc/chilli/defaults | grep HS_DYNIP=
+cat /etc/chilli/defaults | grep HS_DYNIP_MASK=
+cat /etc/chilli/defaults | grep HS_STATIP=
+cat /etc/chilli/defaults | grep HS_STATIP_MASK=
+cat /etc/chilli/defaults | grep HS_DNS_DOMAIN=
+cat /etc/chilli/defaults | grep HS_DNS1=
+cat /etc/chilli/defaults | grep HS_DNS2=
+cat /etc/chilli/defaults | grep HS_UAMALLOW=
+cat /etc/chilli/defaults | grep HS_UAMDOMAINS=
+cat /etc/chilli/defaults | grep HS_UAMSERVER=
+cat /etc/chilli/defaults | grep HS_UAMFORMAT=
+cat /etc/chilli/defaults | grep HS_UAMHOMEPAGE=
+
+
+# new rule in up.sh : enable hotspot nat
+echo '# for hotspot nat' >> /etc/chilli/up.sh 
+echo 'iptables -I POSTROUTING -t nat -o $HS_WANIF -j MASQUERADE' >> /etc/chilli/up.sh
+# new rule in up.sh : enable ssh remote login from tun interface (and mysql remote login)
+echo '# for ssh to tun interface' >> /etc/chilli/up.sh
+echo 'iptables -t filter -I INPUT  -j ACCEPT' >> /etc/chilli/up.sh
+# check for new rules
+tail /etc/chilli/up.sh
+
+
+
+# config haserl
+cat  /etc/chilli/wwwsh  |  grep haserl=
+# haserl=$(which haserl 2>/dev/null)
+sed  -i  's|haserl=$(which haserl 2>/dev/null)|haserl=/usr/local/bin/haserl|g'  /etc/chilli/wwwsh
+cat  /etc/chilli/wwwsh  |  grep haserl=
+# haserl=/usr/local/bin/haserl
+
+
+# chilli auto start 
+insserv  -f  chilli
+
+
+##### Part 3 : Disk Partition
+
+### new partition for data
+fdisk /dev/mmcblk0
+# Command (m for help): p
+#         Device Boot      Start         End      Blocks   Id  System
+# /dev/mmcblk0p1           16065    13623119     6803527+  83  Linux
+
+# Command (m for help): n
+# Select (default p): p
+# Partition number (1-4, default 2): 2
+# First sector (2048-124735487, default 2048): 13623120
+# Last sector, +sectors or +size{K,M,G} (13623120-124735487, default 124735487): +900M
+# Command (m for help): p
+# Command (m for help): w
+
+partprobe
+mke2fs -b 4096 -t ext3 /dev/mmcblk0p2
+e2label /dev/mmcblk0p2 data
+
+### auto mount data partition
+ls -l /etc/fstab
+# -rw-r--r-- 1 root root 69 Dec 27 23:58 /etc/fstab
+mkdir /wms
+echo '/dev/mmcblk0p2 /wms ext3 defaults 0 2' >> /etc/fstab
+cat /etc/fstab
+
+### change mysql data dir to /wms/db, from /var/lib/mysql
+mount  /dev/mmcblk0p2 /wms
+mkdir  /wms/db
+service  mysql  stop
+cp  -r  /var/lib/mysql/*  /wms/db/
+chown  -R  mysql:mysql  /wms/db
+sed  -i  's|/var/lib/mysql|/wms/db|g'  /etc/mysql/my.cnf
+service  mysql  start
+
+
+##### Part 4 : make SD image
+### on another ubuntu box
+### make sure at lease 8G free space to place the image
+# "fdisk -l" to determine "bs" value and "count" value
+# root@ihost:~# fdisk -l
+# Disk /dev/sda: 15.9 GB, 15931539456 bytes
+# 64 heads, 32 sectors/track, 15193 cylinders, total 31116288 sectors
+# Units = sectors of 1 * 512 = 512 bytes
+# Sector size (logical/physical): 512 bytes / 512 bytes
+# I/O size (minimum/optimal): 512 bytes / 512 bytes
+# Disk identifier: 0x000b5098
+
+#        Device Boot      Start         End      Blocks   Id  System
+# /dev/sda1           16065    13623119     6803527+  83  Linux
+# /dev/sda2        13623120    15466319      921600   83  Linux
+
+
+fdisk -l
+umount /dev/sda1
+umount /dev/sda2
+nohup  dd  if=/dev/sda  of=ihost.u.0407.img  bs=512  count=15466320
+
+#fix ihost.u.0407.img 
+#mv db folder from the first partition to the second partition , on another ubuntu box
+mv path-to-1st-partition/wms/db  path-to-2nd-partition/db
+ 
+# change libpcap , on ihost 
+mv  /usr/lib/arm-linux-gnueabihf/libpcap.so.0.8  /usr/lib/arm-linux-gnueabihf/libpcap.so.0.8.bak
+ln  -sf  /usr/local/lib/libpcap.so.1.0.0  /usr/lib/arm-linux-gnueabihf/libpcap.so.0.8
+
+# new image
+nohup  dd  if=/dev/sda  of=ihost.u.0408.img  bs=512  count=15466320
+
+
+# change push url
+sed  -i  's|HS_UAMFORMAT=http://\\$HS_UAMLISTEN:\\$HS_UAMUIPORT/www/ihome.html|HS_UAMFORMAT=http://mtxwifi.net/index.html|g'  /etc/chilli/defaults
+
+
+
