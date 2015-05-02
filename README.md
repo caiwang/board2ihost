@@ -9,7 +9,19 @@ kernel3.18.11代替sd卡上的kernel3.0.36 ：不定期死机，软启动reboot�
 ================
 compiled目录 
 ================
-kernel 3.18.11下编译的软件包
+kernel 3.18.11下编译的软件包:
+coova-chilli_1.3.0_armhf.deb
+libpcap.so.1.0.0
+wlcap
+
+kernel 3.0.36下编译的软件包
+k3036.coova-chilli_1.3.0_armhf.deb
+k3036.libpcap.so.1.0.0
+k3036.wlcap
+
+haserl源码
+haserl-0.9.30.tar.gz
+
 
 
 ================
