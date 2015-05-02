@@ -34,7 +34,7 @@ root rootatusspsp
 ### get source packages & binary
 apt-get install -y git
 cd /usr/src
-git clone -b udoo https://github.com/caiwang/ihostsrc.git
+git clone -b udoo https://github.com/caiwang/board2ihost.git
 
 
 ### kernel compile
@@ -49,7 +49,7 @@ cd /usr/src
 git clone https://github.com/UDOOboard/Kernel_Unico kernel-ihost
 cd kernel-ihost/
 
-cp  /usr/src/ihostsrc/compiled/kernel-ihost/.config  .config
+cp  /usr/src/board2ihost/compiled/kernel-ihost/.config  .config
 make ARCH=arm menuconfig
 cd scripts/
 chmod +x setsecoversion
@@ -61,7 +61,7 @@ cat /usr/src/kernel-ihost/nohup.out  | grep uImage
 #   Image arch/arm/boot/uImage is ready
 
 ## or directly use compiled kernel
-###cd /usr/src/ihostsrc/compiled/kernel-ihost
+###cd /usr/src/board2ihost/compiled/kernel-ihost
 cp /boot/uImage /boot/uImage.bak
 cp arch/arm/boot/uImage /boot/
 make modules_install
@@ -104,12 +104,45 @@ apt-get install -y vlan
 
 
 ### install coova
-cp  /usr/src/ihostsrc/compiled/coova-chilli_1.3.0_armhf.deb  /usr/src
 cd  /usr/src
+wget http://ap.coova.org/chilli/coova-chilli-1.3.0.tar.gz
+# scp  -P  2708  wlsp@mtxwifi.com:~/pkgsrc/coova-chilli-1.3.0.tar.gz   /usr/src/
+tar xzf coova-chilli-1.3.0.tar.gz 
+cd coova-chilli-1.3.0/
+
+./configure  --prefix=/usr                                                                  --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info \
+--sysconfdir=/etc --localstatedir=/var --enable-largelimits \
+--enable-binstatusfile --enable-statusfile --enable-chilliproxy \
+--enable-chilliradsec --enable-chilliredir --with-openssl --with-curl \
+--with-poll --enable-dhcpopt --enable-sessgarden --enable-dnslog \
+--enable-ipwhitelist --enable-redirdnsreq --enable-miniconfig \
+--enable-libjson --enable-layer3 --enable-proxyvsa --enable-miniportal \
+--enable-chilliscript --enable-eapol --enable-uamdomainfile \
+--enable-modules --enable-multiroute
+
+echo 9 > debian/compat
+nano /usr/src/coova-chilli-1.3.0/debian/rules
+[content~~]
+install: build
+        dh_testdir
+        dh_testroot 
+        dh_clean -k
+        dh_prep
+        dh_installdirs
+        $(MAKE) DESTDIR=/ install
+#       $(MAKE) DESTDIR=$(CURDIR)/debian/tmp install
+
+[~~~content]
+
+dpkg-buildpackage -us -uc
+
+cd ..
+
 dpkg -i coova-chilli_1.3.0_armhf.deb
 
+
 ### install haserl
-cp  /usr/src/ihostsrc/board_udoo/package_source/haserl-0.9.30.tar.gz  /usr/src
+cp  /usr/src/board2ihost/package_source/haserl-0.9.30.tar.gz  /usr/src
 cd  /usr/src
 tar xzf haserl-0.9.30.tar.gz
 cd haserl-0.9.30/
@@ -117,7 +150,7 @@ cd haserl-0.9.30/
 make && make install
 
 ### install libpcap
-cp  /usr/src/ihostsrc/compiled/libpcap.so.1.0.0  /usr/local/lib/
+cp  /usr/src/board2ihost/compiled/libpcap.so.1.0.0  /usr/local/lib/
 cd  /usr/src
 mv  /usr/lib/arm-linux-gnueabihf/libpcap.so.0.8  /usr/lib/arm-linux-gnueabihf/libpcap.so.0.8.bak
 ln  -sf  /usr/local/lib/libpcap.so.1.0.0  /usr/lib/arm-linux-gnueabihf/libpcap.so.0.8
@@ -143,7 +176,7 @@ set JAVA_HOME=/opt/jdk1.8.0_33/
 echo $JAVA_HOME
  
 ### wlcap
-cp  /usr/src/ihostsrc/board_udoo/package_binary/wlcap  /usr/bin/wlcap
+cp  /usr/src/board2ihost/compiled/wlcap  /usr/bin/wlcap
 chmod  +x  /usr/bin/wlcap
 
 ### insserv fix
@@ -155,7 +188,7 @@ ls -l /etc/resolv.conf
 # lrwxrwxrwx 1 root root 29 Apr  5 11:02 /etc/resolv.conf -> ../run/resolvconf/resolv.conf
 
 ### clear up
-rm  -rf  /urs/src/ihostsrc 
+rm  -rf  /urs/src/board2ihost 
 
 
 ###### Part 2 : Configuration
@@ -205,9 +238,9 @@ cat  /etc/dnsmasq.conf | grep no-hosts
 # dns record for mtxwifi
 echo  'address=/mtxwifi.net/172.16.0.1'  >>  /etc/dnsmasq.conf
 # dns record for any websit (dns server works without internet connection)
-echo  '#address=/#/172.16.0.1'  >>  /etc/dnsmasq.conf
-# sed  -i  's|#address=/#/172.16.0.1|address=/#/172.16.0.1|g'  /etc/dnsmasq.conf
-# sed  -i  's|address=/#/172.16.0.1|#address=/#/172.16.0.1|g'  /etc/dnsmasq.conf
+echo  '#address=/#/192.168.100.200'  >>  /etc/dnsmasq.conf
+# sed  -i  's|#address=/#/192.168.100.200|address=/#/192.168.100.200|g'  /etc/dnsmasq.conf
+# sed  -i  's|address=/#/192.168.100.200|#address=/#/192.168.100.200|g'  /etc/dnsmasq.conf
 cat  /etc/dnsmasq.conf | grep address=
 
 
