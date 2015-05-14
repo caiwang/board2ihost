@@ -1,7 +1,8 @@
-#switch ihost mode 
-#ihostmod wlan1 wlan0 : smartphone connect to wlan1(hostapd), ihost uplink through wlan0 (dhcp required)
-#ihostmod wlan1 eth0 : smartphone connect to wlan1(hostapd), ihost uplink through eth0 (dhcp required)
-#ihostmod eth0 eth0 : smartphone connect to outside router through eth0
+#bash switch ihost mode 
+#bash ihostmod.sh wlan1 wlan0 : smartphone connect to wlan1(hostapd), ihost uplink through wlan0 (dhcp required)
+#bash ihostmod.sh wlan1 eth0 : smartphone connect to wlan1(hostapd), ihost uplink through eth0 (dhcp required)
+#bash ihostmod.sh eth0 eth0 : smartphone connect to outside router, and then to ihost through eth0(static ip)
+#bash ihostmod.sh eth0 eth0dhcp : smartphone connect to outside router, and then to ihost through eth0(one ip dhcp required)
 
 #!/bin/sh
 #echo arguments to the shell
