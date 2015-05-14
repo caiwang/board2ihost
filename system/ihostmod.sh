@@ -22,13 +22,17 @@ sudo /usr/bin/pkill hostapd
 #stop haveged                                                                   
 sudo /etc/init.d/haveged stop
 
+ifconfig wlan0 down
+ifconfig wlan1 down
+ifconfig eth0 down
+ifconfig eth0:10 down
+
 EOF
 }
 
 put_wlan0_connect_to_startup(){
 cat >> /root/startup.sh << EOF
 # connect wlan0 to wifi
-ifconfig wlan0 down
 ifconfig wlan0 up
 wpa_supplicant -B -iwlan0 -c /etc/wpa_supplicant.conf -Dwext
 dhclient wlan0
@@ -39,9 +43,8 @@ EOF
 put_eth0_connect_to_startup(){
 cat >> /root/startup.sh << EOF
 # connect eth0 (dynamic ip)
-ifconfig eth0 down
 ifconfig eth0 up
-dhclient wlan0
+dhclient eth0
 
 EOF
 }
@@ -49,7 +52,6 @@ EOF
 put_eth0_0_connect_to_startup(){
 cat >> /root/startup.sh << EOF
 # connect eth0 (static ip)
-ifconfig eth0 down
 ifconfig eth0 up
 ip addr add 192.168.100.200/24 dev eth0
 route addroute add -net 192.168.100.0/24 gw 192.168.100.100
@@ -60,7 +62,6 @@ EOF
 put_eth0_1_connect_to_startup(){
 cat >> /root/startup.sh << EOF
 # connect eth0:10
-ifconfig eth0:10 down
 ifconfig eth0:10 up
 ip addr add 172.16.0.1/16 dev eth0
 
@@ -68,11 +69,7 @@ EOF
 }
 
 put_wlan1_hostapd_to_startup(){
-cat >> /root/startup.sh << EOF
-#Bring down wlan1 
-sudo /sbin/ip link set down dev wlan1                                           
-sleep 3
-
+cat >> /root/startup.sh << EOF                                         
 #Set ip on wlan1
 ifconfig wlan1 up
 /sbin/ip addr add 172.16.0.1/16 dev wlan1
