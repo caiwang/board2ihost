@@ -54,8 +54,7 @@ cat >> /root/startup.sh << EOF
 # connect eth0 (static ip)
 ifconfig eth0 up
 ip addr add 192.168.100.200/24 dev eth0
-route addroute add -net 192.168.100.0/24 gw 192.168.100.100
-route addroute add -net 0.0.0.0/0 gw 192.168.100.100
+route add -net 0.0.0.0/0 gw 192.168.100.100
 EOF
 }
 
@@ -131,6 +130,14 @@ ip addr add 192.168.254.254/24 dev $MAN_IF
 EOF
 }
 
+put_eth0_ip_rm_to_startup(){
+cat >> /root/startup.sh << EOF
+# remove 172.16.0.1 from eth0
+ip addr del 172.16.0.1/16 dev eth0
+
+EOF
+}
+
 #HS_WANIF=wlan0 # WAN Interface toward the Internet
 CHILLI_WAN_IF_OLD=`cat /etc/chilli/defaults | grep HS_WANIF=`
 HS_LANIF=wlan1 # Subscriber Interface for client devices
@@ -175,11 +182,12 @@ then
 
     put_head_to_startup
     put_eth0_0_connect_to_startup
-    put_eth0_1_to_startup
+    put_eth0_1_connect_to_startup
     put_dnsmasq_to_startup
     put_iptables_to_startup
     put_chilli_to_startup
     put_manage_if_to_startup
+    put_eth0_ip_rm_to_startup
 
 else
     echo "Error!!! check your input!!!"
@@ -193,8 +201,8 @@ sed  -i  "s|$CHILLI_WAN_IF_OLD|$CHILLI_WAN_IF|g"  /etc/chilli/defaults
 sed  -i  "s|$CHILLI_LAN_IF_OLD|$CHILLI_LAN_IF|g"  /etc/chilli/defaults
 
 # excute startup.sh
-bash /root/startup.sh
+#bash /root/startup.sh
 
 # restart chilli
-service chilli restart
+#service chilli restart
 
