@@ -200,6 +200,24 @@ then
     sed  -i  "s|$DNSMASQ_RESOLVCONF|IGNORE_RESOLVCONF=yes|g"  /etc/default/dnsmasq
     sed  -i  "s|$DNSMASQ_RESOLVFILE|resolv-file=/etc/resolv.dnsmasq.conf|g"  /etc/dnsmasq.conf
 
+elif [ "$1" = 'eth0' -a  "$2" = 'eth0dhcp' ]
+then
+    WAN_IF='eth0'
+    LAN_IF='eth0:10'
+    MAN_IF='eth0:9'
+
+    put_head_to_startup
+    put_eth0_connect_to_startup
+    put_eth0_1_connect_to_startup
+    put_dnsmasq_to_startup
+    put_iptables_to_startup
+    put_chilli_to_startup
+    put_manage_if_to_startup
+    put_eth0_ip_rm_to_startup
+
+    sed  -i  "s|$DNSMASQ_RESOLVCONF|#IGNORE_RESOLVCONF=yes|g"  /etc/default/dnsmasq
+    sed  -i  "s|$DNSMASQ_RESOLVFILE|#resolv-file=/etc/resolv.dnsmasq.conf|g"  /etc/dnsmasq.conf
+
 else
     echo "Error!!! check your input!!!"
     exit 0
@@ -216,4 +234,3 @@ sed  -i  "s|$CHILLI_LAN_IF_OLD|$CHILLI_LAN_IF|g"  /etc/chilli/defaults
 
 # restart chilli
 #service chilli restart
-
