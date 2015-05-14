@@ -143,6 +143,10 @@ CHILLI_WAN_IF_OLD=`cat /etc/chilli/defaults | grep HS_WANIF=`
 HS_LANIF=wlan1 # Subscriber Interface for client devices
 CHILLI_LAN_IF_OLD=`cat /etc/chilli/defaults | grep HS_LANIF=`
 
+#IGNORE_RESOLVCONF=yes
+DNSMASQ_RESOLVCONF=`cat /etc/default/dnsmasq | grep IGNORE_RESOLVCONF=`
+#resolv-file=/etc/resolv.dnsmasq.conf
+DNSMASQ_RESOLVFILE=`cat /etc/dnsmasq.conf | grep resolv-file=`
 
 if [ "$1" = 'wlan1' -a  "$2" = 'wlan0' ]
 then
@@ -158,7 +162,9 @@ then
     put_haveged_to_startup
     put_chilli_to_startup
     put_manage_if_to_startup
-    
+    sed  -i  "s|$DNSMASQ_RESOLVCONF|#IGNORE_RESOLVCONF=yes|g"  /etc/default/dnsmasq
+    sed  -i  "s|$DNSMASQ_RESOLVFILE|#resolv-file=/etc/resolv.dnsmasq.conf|g"  /etc/dnsmasq.conf
+
 elif [ "$1" = 'wlan1' -a  "$2" = 'eth0' ]
 then
     WAN_IF='eth0'
@@ -173,6 +179,8 @@ then
     put_haveged_to_startup
     put_chilli_to_startup
     put_manage_if_to_startup
+    sed  -i  "s|$DNSMASQ_RESOLVCONF|#IGNORE_RESOLVCONF=yes|g"  /etc/default/dnsmasq
+    sed  -i  "s|$DNSMASQ_RESOLVFILE|#resolv-file=/etc/resolv.dnsmasq.conf|g"  /etc/dnsmasq.conf
 
 elif [ "$1" = 'eth0' -a  "$2" = 'eth0' ]
 then
@@ -188,6 +196,9 @@ then
     put_chilli_to_startup
     put_manage_if_to_startup
     put_eth0_ip_rm_to_startup
+
+    sed  -i  "s|$DNSMASQ_RESOLVCONF|IGNORE_RESOLVCONF=yes|g"  /etc/default/dnsmasq
+    sed  -i  "s|$DNSMASQ_RESOLVFILE|resolv-file=/etc/resolv.dnsmasq.conf|g"  /etc/dnsmasq.conf
 
 else
     echo "Error!!! check your input!!!"
