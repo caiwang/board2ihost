@@ -1,17 +1,26 @@
-#bash switch ihost mode 
-#bash ihostmod.sh wlan1 wlan0 : smartphone connect to wlan1(hostapd), ihost uplink through wlan0 (dhcp required)
-#bash ihostmod.sh wlan1 eth0 : smartphone connect to wlan1(hostapd), ihost uplink through eth0 (dhcp required)
-#bash ihostmod.sh eth0 eth0 : smartphone connect to outside router, and then to ihost through eth0(static ip)
-#bash ihostmod.sh eth0 eth0dhcp : smartphone connect to outside router, and then to ihost through eth0(one ip dhcp required)
+#bash switch ihost mode : create a startup.sh in the same directory. 
+#it should be excuted in /root, and create "/root/startup.sh" 
+#/root/startup.sh will be called from /etc/init.d/rc.local at system boot
+#
+#usage : bash ihostmod.sh  LANIF WANIF WLAN_SNIFFER_IF LAN_SNIFFER
+#example:
+#bash ihostmod.sh wlan1 wlan0 : smartphone connect to wlan1(hostapd), ihost uplink through wlan0 (dhcp required), no wlan sniffer,no lan sniffer
+#bash ihostmod.sh wlan1 eth0 : smartphone connect to wlan1(hostapd), ihost uplink through eth0 (dhcp required), no wlan sniffer,no lan sniffer
+#bash ihostmod.sh eth0 eth0 : smartphone connect to outside router, and then to ihost through eth0(static ip), no wlan sniffer,no lan sniffer
+#bash ihostmod.sh eth0 eth0dhcp : smartphone connect to outside router, and then to ihost through eth0(one ip dhcp required), no wlan sniffer,no lan sniffer
+#bash ihostmod.sh x x wlan1 eth0 : wlan sniffer on wlan1, lan sniffer on eth0 (ihost with a wireless router)
+#bash ihostmod.sh x x 192.168.100.10/wlan100  eth0 : wlan sniffer on rpcap://192.168.100.10/wlan100, lan sniffer on eth0(ihost with a ruckus ap)
+#bash ihostmod.sh x x wlan1 wlan1 : wlan sniffer on wlan1, lan sniffer on wlan1(ihost without a wireless router or ruckus ap)
 
+# should be excute in 
 #!/bin/sh
 #echo arguments to the shell
 echo 'Using LAN IF : '$1  ' / WAN IF : ' $2 '...'
 
 put_head_to_startup(){
-rm /root/startup.sh
+rm ./startup.sh
 
-cat >> /root/startup.sh << EOF
+cat >> ./startup.sh << EOF
 #!/bin/sh
 
 #Stop named, if already running. dnsmasq cannot run because it take up port 53 
@@ -32,7 +41,7 @@ EOF
 }
 
 put_wlan0_connect_to_startup(){
-cat >> /root/startup.sh << EOF
+cat >> ./startup.sh << EOF
 # connect wlan0 to wifi
 ifconfig wlan0 up
 wpa_supplicant -B -iwlan0 -c /etc/wpa_supplicant.conf -Dwext
@@ -42,7 +51,7 @@ EOF
 }
 
 put_eth0_connect_to_startup(){
-cat >> /root/startup.sh << EOF
+cat >> ./startup.sh << EOF
 # connect eth0 (dynamic ip)
 ifconfig eth0 up
 dhclient eth0
@@ -51,7 +60,7 @@ EOF
 }
 
 put_eth0_0_connect_to_startup(){
-cat >> /root/startup.sh << EOF
+cat >> ./startup.sh << EOF
 # connect eth0 (static ip)
 ifconfig eth0 up
 ip addr add 192.168.100.200/24 dev eth0
@@ -60,7 +69,7 @@ EOF
 }
 
 put_eth0_1_connect_to_startup(){
-cat >> /root/startup.sh << EOF
+cat >> ./startup.sh << EOF
 # connect eth0:10
 ifconfig eth0:10 up
 ip addr add 172.16.0.1/16 dev eth0
@@ -69,7 +78,7 @@ EOF
 }
 
 put_wlan1_hostapd_to_startup(){
-cat >> /root/startup.sh << EOF                                         
+cat >> ./startup.sh << EOF                                         
 #Set ip on wlan1
 ifconfig wlan1 up
 /sbin/ip addr add 172.16.0.1/16 dev wlan1
@@ -80,7 +89,7 @@ EOF
 }
 
 put_dnsmasq_to_startup(){
-cat >> /root/startup.sh << EOF
+cat >> ./startup.sh << EOF
 #Start dnsmasq 
 sudo /usr/sbin/service dnsmasq start
 
@@ -88,7 +97,7 @@ EOF
 }
 
 put_iptables_to_startup(){
-cat >> /root/startup.sh << EOF
+cat >> ./startup.sh << EOF
 #Start ip_forward 
 sudo echo 1 > /proc/sys/net/ipv4/ip_forward
 #add iptables rule for NAT 
@@ -106,7 +115,7 @@ EOF
 }
 
 put_haveged_to_startup(){
-cat >> /root/startup.sh << EOF
+cat >> ./startup.sh << EOF
 #start haveged
 sudo /etc/init.d/haveged start
  
@@ -114,7 +123,7 @@ EOF
 }
 
 put_chilli_to_startup(){
-cat >> /root/startup.sh << EOF
+cat >> ./startup.sh << EOF
 # start chilli
 service chilli start
  
@@ -122,7 +131,7 @@ EOF
 }
 
 put_manage_if_to_startup(){
-cat >> /root/startup.sh << EOF
+cat >> ./startup.sh << EOF
 #Start up management interface
 ifconfig $MAN_IF up
 ip addr add 192.168.254.254/24 dev $MAN_IF
@@ -132,7 +141,7 @@ EOF
 }
 
 put_eth0_ip_rm_to_startup(){
-cat >> /root/startup.sh << EOF
+cat >> ./startup.sh << EOF
 # remove 172.16.0.1 from eth0
 ip addr del 172.16.0.1/16 dev eth0
 
@@ -231,7 +240,60 @@ sed  -i  "s|$CHILLI_WAN_IF_OLD|$CHILLI_WAN_IF|g"  /etc/chilli/defaults
 sed  -i  "s|$CHILLI_LAN_IF_OLD|$CHILLI_LAN_IF|g"  /etc/chilli/defaults
 
 # excute startup.sh
-#bash /root/startup.sh
+#bash ./startup.sh
 
 # restart chilli
 #service chilli restart
+
+# put scripts into starup.sh : to  set wlan sniffer interface
+echo "# set wlan sniffer interface" >> ./startup.sh
+if [ "-$3" = '-' ]
+then
+    echo "export WLAN_SNIF_IF=''" >> ./startup.sh
+elif [ "$3" = 'wlan1' ]
+    echo "iw dev mon.ihost del" >> ./startup.sh
+    echo "iw dev wlan1 interface add mon.ihost type monitor" >> ./startup.sh
+    echo "ip link set mon.ihost promisc on" >> ./startup.sh
+    echo "ifconfig mon.ihost up" >> ./startup.sh
+    echo "export WLAN_SNIF_IF='mon.ihost'" >> ./startup.sh
+else
+    echo "export WLAN_SNIF_IF='rpcap://'$3" >> ./startup.sh
+
+fi
+
+# put scripts into starup.sh : to set lan sniffer interface&mac
+echo "# set lan sniffer interface" >> ./startup.sh
+if [ "$3" = 'wlan1' ]
+    echo "export LAN_SNIF_IF='wlan1'" >> ./startup.sh
+elif [ "$3" = 'eth0' ]
+    echo "export LAN_SNIF_IF='eth0'" >> ./startup.sh
+else
+    echo "export LAN_SNIF_IF=''" >> ./startup.sh
+
+fi
+echo "# get & export lan sniffer interface's mac" >> ./startup.sh 
+echo "export LAN_SNIF_IF_MAC=`ifconfig $LAN_SNIF_IF | grep $LAN_SNIF_IF|cut -d':' -f2-7|cut -d '' -f4 | awk '{print $3}'`" >> ./startup.sh
+
+
+
+# create wlan sniffer shell script
+cat >> ./wlcap.wlan.sh << EOF
+if [ "-$WLAN_SNIF_IF" = '-' ]
+then
+    echo "NO WLAN SNIFFER INTERFACE SET IN SYSTEM, EXIT..."
+    exit 0 
+else
+    wlcap -i $WLAN_SNIF_IF -T fields -E separator=, -E quote=d -e frame.time -e frame.protocols -e radiotap.dbm_antsignal -e ppi.80211-common.dbm.antsignal -e wlan.sa -e wlan.bssid -e wlan_mgt.ssid -f "subtype probe-req"
+fi
+EOF
+
+# create lan sniffer shell script
+cat >> ./wlcap.lan.sh << EOF
+if [ "-$LAN_SNIF_IF" = '-' ]
+then
+    echo "NO LAN SNIFFER INTERFACE SET IN SYSTEM, EXIT..."
+    exit 0 
+else
+    wlcap -i $LAN_SNIF_IF -T fields -E separator=, -E quote=d -e frame.time -e eth.src -e ip.src -e ip.dst -e http.request.full_uri -f "(src net 172.16.0.0/16) and (not (dst net 172.16.0.0/16)) and (dst port http or 8080 or https) and ((tcp-syn)!=0) and (not ether src $LAN_SNIF_IF_MAC)"
+fi
+EOF
