@@ -46,8 +46,10 @@ cat >> ./startup.sh << EOF
 # connect wlan0 to wifi
 ifconfig wlan0 up
 wpa_supplicant -B -iwlan0 -c /etc/wpa_supplicant.conf -Dwext
+#iwconfig wlan0 mode Managed
+#iwconfig wlan0 essid "mtxwifi"
 dhclient wlan0
-
+sleep 3
 EOF
 }
 

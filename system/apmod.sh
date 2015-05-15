@@ -2,7 +2,7 @@
 #usage : bash apmod.sh  ssid channel vis/hid open/secu password
 #example:
 #bash apmod.sh ssid-a 1 vis open : ssid-a,channel 1,visible, open without password
-#bash apmod.sh ssid-b 6 hid secu 12345678 : ssid-b,channel 6,not visible, secured without password 12345678(8bits required)
+#bash apmod.sh ssid-b 6 hid secu 12345678 : ssid-b,channel 6,not visible, secured without password 12345678(8bits needed)
 
 #!/bin/sh
 #echo arguments to the shell
@@ -40,3 +40,4 @@ then
     echo "wpa_pairwise=TKIP CCMP" >> /etc/hostapd/hostapd.conf.std
     echo "rsn_pairwise=TKIP CCMP" >> /etc/hostapd/hostapd.conf.std 
 fi
+
