@@ -9,13 +9,14 @@
 #bash ihostmod.sh eth0 eth0 : smartphone connect to outside router, and then to ihost through eth0(static ip), no wlan sniffer,no lan sniffer
 #bash ihostmod.sh eth0 eth0dhcp : smartphone connect to outside router, and then to ihost through eth0(one ip dhcp required), no wlan sniffer,no lan sniffer
 #bash ihostmod.sh x x wlan1 eth0 : wlan sniffer on wlan1, lan sniffer on eth0 (ihost with a wireless router)
-#bash ihostmod.sh x x 192.168.100.10/wlan100  eth0 : wlan sniffer on rpcap://192.168.100.10/wlan100, lan sniffer on eth0(ihost with a ruckus ap)
+#bash ihostmod.sh x x rpcap://192.168.100.10/wlan100  eth0 : wlan sniffer on rpcap://192.168.100.10/wlan100, lan sniffer on eth0(ihost with a ruckus ap)
 #bash ihostmod.sh x x wlan1 wlan1 : wlan sniffer on wlan1, lan sniffer on wlan1(ihost without a wireless router or ruckus ap)
 
 # should be excute in 
 #!/bin/sh
 #echo arguments to the shell
 echo 'Using LAN IF : '$1  ' / WAN IF : ' $2 '...'
+echo 'Using WLAN SNIF IF : '$3  ' / LAN SNIF IF : ' $4 '...'
 
 put_head_to_startup(){
 rm ./startup.sh
@@ -245,55 +246,55 @@ sed  -i  "s|$CHILLI_LAN_IF_OLD|$CHILLI_LAN_IF|g"  /etc/chilli/defaults
 # restart chilli
 #service chilli restart
 
+# clear ruckus's config file
+rm ./ruckus
+
 # put scripts into starup.sh : to  set wlan sniffer interface
-echo "# set wlan sniffer interface" >> ./startup.sh
+# create wlan sniffer shell script (or not create)
 if [ "-$3" = '-' ]
 then
-    echo "export WLAN_SNIF_IF=''" >> ./startup.sh
-elif [ "$3" = 'wlan1' ]
-    echo "iw dev mon.ihost del" >> ./startup.sh
-    echo "iw dev wlan1 interface add mon.ihost type monitor" >> ./startup.sh
-    echo "ip link set mon.ihost promisc on" >> ./startup.sh
-    echo "ifconfig mon.ihost up" >> ./startup.sh
-    echo "export WLAN_SNIF_IF='mon.ihost'" >> ./startup.sh
-else
-    echo "export WLAN_SNIF_IF='rpcap://'$3" >> ./startup.sh
-
-fi
-
-# put scripts into starup.sh : to set lan sniffer interface&mac
-echo "# set lan sniffer interface" >> ./startup.sh
-if [ "$3" = 'wlan1' ]
-    echo "export LAN_SNIF_IF='wlan1'" >> ./startup.sh
-elif [ "$3" = 'eth0' ]
-    echo "export LAN_SNIF_IF='eth0'" >> ./startup.sh
-else
-    echo "export LAN_SNIF_IF=''" >> ./startup.sh
-
-fi
-echo "# get & export lan sniffer interface's mac" >> ./startup.sh 
-echo "export LAN_SNIF_IF_MAC=`ifconfig $LAN_SNIF_IF | grep $LAN_SNIF_IF|cut -d':' -f2-7|cut -d '' -f4 | awk '{print $3}'`" >> ./startup.sh
-
-
-
-# create wlan sniffer shell script
-cat >> ./wlcap.wlan.sh << EOF
-if [ "-$WLAN_SNIF_IF" = '-' ]
-then
-    echo "NO WLAN SNIFFER INTERFACE SET IN SYSTEM, EXIT..."
+    echo "NO WLAN SNIFFER INTERFACE GIVEN, wlcap.wlan.sh WILL NOT BE CREATED..."
     exit 0 
 else
-    wlcap -i $WLAN_SNIF_IF -T fields -E separator=, -E quote=d -e frame.time -e frame.protocols -e radiotap.dbm_antsignal -e ppi.80211-common.dbm.antsignal -e wlan.sa -e wlan.bssid -e wlan_mgt.ssid -f "subtype probe-req"
-fi
-EOF
+    if [ "$3" = 'wlan1' ]
+    then
+        echo "# set wlan sniffer interface" >> ./startup.sh
+        echo "iw dev mon.ihost del" >> ./startup.sh
+        echo "iw dev wlan1 interface add mon.ihost type monitor" >> ./startup.sh
+        echo "ip link set mon.ihost promisc on" >> ./startup.sh
+        echo "ifconfig mon.ihost up" >> ./startup.sh
+        WLAN_SNIF_IF=mon.wlan1
+    else
+        arr=($(echo $3 | tr '/' ' ' | tr -s ' '))
+        REOMTE_IP=${arr[1]}
+        echo 'Ruckus AP address: '$REOMTE_IP
+        REOMTE_PASSWD='sp-admin'
+        echo 'Default admin password: sp-admin'
+        read -p "Input admin passrod (Press Enter key to accept default value): " INPUT
+        if [ x$INPUT != x ]; then
+            REOMTE_PASSWD=$INPUT
+        fi
+        echo 'Ruckus AP admin password : '$REOMTE_PASSWD
 
-# create lan sniffer shell script
-cat >> ./wlcap.lan.sh << EOF
-if [ "-$LAN_SNIF_IF" = '-' ]
+        # write to ruckus' config file
+        echo $REOMTE_IP > ruckus
+        echo $REOMTE_PASSWD >> ruckus
+        WLAN_SNIF_IF=$3
+    fi
+    echo '#!/bin/sh' > ./wlcap.wlan.sh
+    WLCMD="wlcap -i $WLAN_SNIF_IF -T fields -E separator=, -E quote=d -e frame.time -e frame.protocols -e radiotap.dbm_antsignal -e ppi.80211-common.dbm.antsignal -e wlan.sa -e wlan.bssid -e wlan_mgt.ssid -f \"subtype probe-req\""
+    echo $WLCMD >> ./wlcap.wlan.sh
+fi
+
+
+# create lan sniffer shell script (or not create)
+if [ "-$4" = '-' ]
 then
-    echo "NO LAN SNIFFER INTERFACE SET IN SYSTEM, EXIT..."
+    echo "NO LAN SNIFFER INTERFACE GIVEN, wlcap.lan.sh WILL NOT BE CREATED..."
     exit 0 
 else
-    wlcap -i $LAN_SNIF_IF -T fields -E separator=, -E quote=d -e frame.time -e eth.src -e ip.src -e ip.dst -e http.request.full_uri -f "(src net 172.16.0.0/16) and (not (dst net 172.16.0.0/16)) and (dst port http or 8080 or https) and ((tcp-syn)!=0) and (not ether src $LAN_SNIF_IF_MAC)"
+    LAN_SNIF_IF_MAC=`ifconfig $4 | grep $4|cut -d':' -f2-7|cut -d '' -f4 | awk '{print $3}'` 
+    echo '#!/bin/sh' >  ./wlcap.lan.sh
+    WLCMD="wlcap -i $4 -T fields -E separator=, -E quote=d -e frame.time -e eth.src -e ip.src -e ip.dst -e http.request.full_uri -f \"(src net 172.16.0.0/16) and (not (dst net 172.16.0.0/16)) and (dst port http or 8080 or https) and ((tcp-syn)!=0) and (not ether src $LAN_SNIF_IF_MAC)\""
+    echo $WLCMD >> ./wlcap.lan.sh
 fi
-EOF
