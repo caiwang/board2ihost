@@ -284,7 +284,7 @@ else
         WLAN_SNIF_IF=$3
     fi
     echo '#!/bin/sh' > ./wlcap.wlan.sh
-    WLCMD="wlcap -i $WLAN_SNIF_IF -T fields -E separator=, -E quote=d -e frame.time -e frame.protocols -e radiotap.dbm_antsignal -e ppi.80211-common.dbm.antsignal -e wlan.sa -e wlan.bssid -e wlan_mgt.ssid -f \"subtype probe-req\""
+    WLCMD="wlcap -i $WLAN_SNIF_IF -T fields -E separator=, -E quote=d -e frame.time -e frame.protocols -e radiotap.dbm_antsignal -e ppi.80211-common.dbm.antsignal -e wlan.sa -e wlan.bssid -e wlan_mgt.ssid -R \"wlan.fc.type_subtype==0x04\""
     echo $WLCMD >> ./wlcap.wlan.sh
 fi
 
