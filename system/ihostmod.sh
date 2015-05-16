@@ -297,6 +297,8 @@ then
 else
     LAN_SNIF_IF_MAC=`ifconfig $4 | grep $4|cut -d':' -f2-7|cut -d '' -f4 | awk '{print $3}'` 
     echo '#!/bin/sh' >  ./wlcap.lan.sh
-    WLCMD="wlcap -i $4 -T fields -E separator=, -E quote=d -e frame.time -e eth.src -e ip.src -e ip.dst -e http.request.full_uri -f \"(src net 172.16.0.0/16) and (not (dst net 172.16.0.0/16)) and (dst port http or 8080 or https) and ((tcp-syn)!=0) and (not ether src $LAN_SNIF_IF_MAC)\""
+    WLCMD="netcap -i $4 -T fields -E separator=, -E quote=d -e frame.time -e eth.src -e ip.src -e ip.dst -e http.request.full_uri -f \"(src net 172.16.0.0/16) and (not (dst net 172.16.0.0/16)) and (dst port http or 8080 or https) and ((tcp-syn)!=0) and (not ether src $LAN_SNIF_IF_MAC)\""
     echo $WLCMD >> ./wlcap.lan.sh
 fi
+
+chmod +x ./*.sh
