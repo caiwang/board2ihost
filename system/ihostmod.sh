@@ -284,7 +284,7 @@ else
         WLAN_SNIF_IF=rpcap://$3
     fi
     echo '#!/bin/sh' > ./wlcap.wlan.sh
-    WLCMD="wlcap -l -i $WLAN_SNIF_IF -T fields -E separator=, -E quote=d -e frame.time -e frame.protocols -e radiotap.dbm_antsignal -e ppi.80211-common.dbm.antsignal -e wlan.sa -e wlan.bssid -e wlan_mgt.ssid -Y \"wlan.fc.type_subtype==0x04\""
+    WLCMD="wlcap -l -i $WLAN_SNIF_IF -T fields -E separator=,  -e wlan.fc.type_subtype -e wlan.sa -e frame.time_epoch -e frame.protocols -e radiotap.dbm_antsignal -e ppi.80211-common.dbm.antsignal -e wlan_mgt.ssid -Y \"wlan.fc.type_subtype==0x04\""
     echo $WLCMD >> ./wlcap.wlan.sh
 fi
 
@@ -297,7 +297,7 @@ then
 else
     LAN_SNIF_IF_MAC=`ifconfig $4 | grep $4|cut -d':' -f2-7|cut -d '' -f4 | awk '{print $3}'` 
     echo '#!/bin/sh' >  ./wlcap.lan.sh
-    WLCMD="netcap -l -i $4 -T fields -E separator=, -E quote=d -e frame.time -e eth.src -e ip.src -e ip.dst -e http.request.full_uri -f \"(src net 172.16.0.0/16) and (not (dst net 172.16.0.0/16)) and (dst port http or 8080 or https) and ((tcp-syn)!=0) and (not ether src $LAN_SNIF_IF_MAC)\""
+    WLCMD="netcap -l -i $4 -T fields -E separator=, -e eth.type -e eth.src -e frame.time_epoch -e ip.src -e ip.dst -e http.request.full_uri -f \"(src net 172.16.0.0/16) and (not (dst net 172.16.0.0/16)) and (dst port http or 8080 or https) and ((tcp-syn)!=0) and (not ether src $LAN_SNIF_IF_MAC)\""
     echo $WLCMD >> ./wlcap.lan.sh
 fi
 
