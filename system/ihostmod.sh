@@ -9,7 +9,7 @@
 #bash ihostmod.sh eth0 eth0 : smartphone connect to outside router, and then to ihost through eth0(static ip), no wlan sniffer,no lan sniffer
 #bash ihostmod.sh eth0 eth0dhcp : smartphone connect to outside router, and then to ihost through eth0(one ip dhcp required), no wlan sniffer,no lan sniffer
 #bash ihostmod.sh x x wlan1 eth0 : wlan sniffer on wlan1, lan sniffer on eth0 (ihost with a wireless router)
-#bash ihostmod.sh x x rpcap://192.168.100.10/wlan100  eth0 : wlan sniffer on rpcap://192.168.100.10/wlan100, lan sniffer on eth0(ihost with a ruckus ap)
+#bash ihostmod.sh x x 192.168.100.10/wlan100  eth0 : wlan sniffer on rpcap://192.168.100.10/wlan100, lan sniffer on eth0(ihost with a ruckus ap)
 #bash ihostmod.sh x x wlan1 wlan1 : wlan sniffer on wlan1, lan sniffer on wlan1(ihost without a wireless router or ruckus ap)
 
 # should be excute in 
@@ -268,7 +268,7 @@ else
         WLAN_SNIF_IF=mon.wlan1
     else
         arr=($(echo $3 | tr '/' ' ' | tr -s ' '))
-        REOMTE_IP=${arr[1]}
+        REOMTE_IP=${arr[0]}
         echo 'Ruckus AP address: '$REOMTE_IP
         REOMTE_PASSWD='sp-admin'
         echo 'Default admin password: sp-admin'
@@ -281,7 +281,7 @@ else
         # write to ruckus' config file
         echo $REOMTE_IP > ruckus
         echo $REOMTE_PASSWD >> ruckus
-        WLAN_SNIF_IF=$3
+        WLAN_SNIF_IF=rpcap://$3
     fi
     echo '#!/bin/sh' > ./wlcap.wlan.sh
     WLCMD="wlcap -l -i $WLAN_SNIF_IF -T fields -E separator=, -E quote=d -e frame.time -e frame.protocols -e radiotap.dbm_antsignal -e ppi.80211-common.dbm.antsignal -e wlan.sa -e wlan.bssid -e wlan_mgt.ssid -Y \"wlan.fc.type_subtype==0x04\""
