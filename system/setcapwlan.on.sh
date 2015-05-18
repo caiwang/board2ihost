@@ -1,8 +1,14 @@
 #script to bring up wlcap.wlan.sh
 
 #!/bin/sh
-mkdir -p /wms/pkt/wlan
+#use ramdisk
+dirBASE='/run/shm'
+#use sd card
+#dirBASE='/wms'
+mkdir -p $dirBASE/pkt/wlan
 NOW=$(date +"%F")
 NOWT=$(date +"%T")
-FILE="/wms/pkt/wlan/$NOW-$NOWT.txt"
-echo '\n' |  /root/wlcap.wlan.sh &> $FILE
+minNOWT=$(echo $NOWT | sed 's/://g;s/..$//')
+FILE="$dirBASE/pkt/wlan/$NOW-$minNOWT"
+echo "wlFILE=$FILE" > $dirBASE/pkt/wlan/.workingfile
+echo '\n' |  /root/wlcap.wlan.sh  > $FILE & 

@@ -12,7 +12,7 @@ expect {
  "Please login" {send "super\r"; exp_continue}
 }
 
-expect "Password"
+expect "password "
 send "$passwd\r"
 expect "rkscli"
 send "set capture wlan100 idle\r"
