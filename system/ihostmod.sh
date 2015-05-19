@@ -265,7 +265,7 @@ else
         echo "iw dev wlan1 interface add mon.ihost type monitor" >> ./startup.sh
         echo "ip link set mon.ihost promisc on" >> ./startup.sh
         echo "ifconfig mon.ihost up" >> ./startup.sh
-        WLAN_SNIF_IF=mon.wlan1
+        WLAN_SNIF_IF=mon.ihost
     else
         arr=($(echo $3 | tr '/' ' ' | tr -s ' '))
         REOMTE_IP=${arr[0]}

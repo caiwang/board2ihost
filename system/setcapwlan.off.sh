@@ -62,8 +62,8 @@ EOFMYSQL
     
     # remove files
     if [ ! -n "$2" ]; then
-        #rm $wlFILE
-        #rm $outFILE
+        rm $wlFILE
+        rm $outFILE
         echo "remove files"
     fi
 
@@ -71,12 +71,12 @@ fi
 
 if [ $fSIZE -lt $minSIZE ]; then
     if [ -f /root/ruckus ]; then
-        bash /root/setruckus.sh &
+        bash /root/setruckus.sh 
     else
-        iw dev mon.ihost del &
-        iw dev wlan1 interface add mon.ihost type monitor &
-        ip link set mon.ihost promisc on &
-        ifconfig mon.ihost up &
+        iw dev mon.ihost del 
+        iw dev wlan1 interface add mon.ihost type monitor 
+        ip link set mon.ihost promisc on 
+        ifconfig mon.ihost up 
     fi
 fi
 
