@@ -148,6 +148,8 @@ nohup dd if=/dev/sda of=base.0506.img conv=sync count=$(($START_SECTOR+$SIZE_SEC
 
 
 ### wlcap
+cd /usr/src
+git pull
 cp  /usr/src/board2ihost/compiled/k3036.wlcap  /usr/bin/wlcap
 cp  /usr/src/board2ihost/compiled/k3036.wlcap  /usr/bin/netcap
 chmod  +x  /usr/bin/wlcap
@@ -580,49 +582,7 @@ ls -l startup.sh
 sed -i '14a\. /root/startup.sh' /etc/init.d/rc.local
 
 
-echo "9-59/10 * * * * sudo bash /root/setcapwlan.off.sh &" >> /var/spool/cron/crontabs/root
-echo "*/10 * * * * sudo bash /root/setcapwlan.on.sh &" >> /var/spool/cron/crontabs/root
-
-echo "9-59/10 * * * * sudo bash /root/setcaplan.off.sh &" >> /var/spool/cron/crontabs/root
-echo "*/10 * * * * sudo bash /root/setcaplan.on.sh &" >> /var/spool/cron/crontabs/root
-
-echo "@reboot sudo bash /root/record_top.sh " >> /var/spool/cron/crontabs/root
-
-reboot
-
-
-##### Part 3 : Disk Partition
-
-### new partition for data
-
-START_SECTOR=`cat /sys/block/mmcblk0/mmcblk0p1/start`
-SIZE_SECTOR=`cat /sys/block/mmcblk0/mmcblk0p1/size`
-echo $(($START_SECTOR+$SIZE_SECTOR))
-fdisk /dev/mmcblk0  << EOF
-n
-p
-2
-$(($START_SECTOR+$SIZE_SECTOR))
-+500M 
-w
-
-EOF
-
-partprobe
-mke2fs -b 4096 -t ext4 /dev/mmcblk0p2
-e2label /dev/mmcblk0p2 data
-sync
-
-
-### auto mount data partition
-ls -l /etc/fstab
-# -rw-r--r-- 1 root root 69 Dec 27 23:58 /etc/fstab
 mkdir /wms
-echo '/dev/mmcblk0p2 /wms ext4 defaults 0 2' >> /etc/fstab
-cat /etc/fstab
-
-### change mysql data dir to /wms/db, from /var/lib/mysql
-mount  /dev/mmcblk0p2 /wms
 mkdir  /wms/db
 service  mysql  stop
 cp  -r  /var/lib/mysql/*  /wms/db/
@@ -630,15 +590,9 @@ chown  -R  mysql:mysql  /wms/db
 sed  -i  's|/var/lib/mysql|/wms/db|g'  /etc/mysql/my.cnf
 service  mysql  start
 
+reboot
 
 
-此处做了备份：(注意磁盘可用空间3.7G)
-
-
-START_SECTOR2=`cat /sys/block/sda/sda2/start`
-SIZE_SECTOR2=`cat /sys/block/sda/sda2/size`
-echo $(($START_SECTOR2+$SIZE_SECTOR2))
-nohup dd if=/dev/sda of=full.0518.img conv=sync count=$(($START_SECTOR2+$SIZE_SECTOR2))
 
 
 fix:
@@ -702,16 +656,22 @@ EOFMYSQL
 cd /usr/src
 rm  -rf  board2ihost
 git clone -b ver2 https://github.com/usspupdates/ihostupd.git
+
+sed  -i  's|/root/top.txt|/wms/top.txt|g'  /root/record_top.sh
+
 rm  /root/top.txt
 
+
+### end ###
 
 此处做了备份：(注意磁盘可用空间3.7G)
 
 
-START_SECTOR2=`cat /sys/block/sda/sda2/start`
-SIZE_SECTOR2=`cat /sys/block/sda/sda2/size`
-echo $(($START_SECTOR2+$SIZE_SECTOR2))
-nohup dd if=/dev/sda of=full.0519.img conv=sync count=$(($START_SECTOR2+$SIZE_SECTOR2))
+START_SECTOR=`cat /sys/block/sda/sda1/start`
+SIZE_SECTOR=`cat /sys/block/sda/sda1/size`
+echo $(($START_SECTOR+$SIZE_SECTOR))
+nohup dd if=/dev/sda of=full.0520.img conv=sync count=$(($START_SECTOR+$SIZE_SECTOR))
+
 
 
 -----------
