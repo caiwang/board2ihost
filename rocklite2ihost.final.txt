@@ -607,6 +607,12 @@ cp  /usr/src/board2ihost/system/setcapwlan.off.sh  /root/setcapwlan.off.sh
 cd  /root
 ./ihostmod.sh wlan1 eth0 wlan1 wlan1
 
+echo "9-59/10 * * * * sudo bash /root/setcapwlan.off.sh & " >> /var/spool/cron/crontabs/root
+echo "*/10 * * * * sudo bash /root/setcapwlan.on.sh & " >> /var/spool/cron/crontabs/root
+echo "9-59/10 * * * * sudo bash /root/setcaplan.off.sh & " >> /var/spool/cron/crontabs/root
+echo "*/10 * * * * sudo bash /root/setcaplan.on.sh & " >> /var/spool/cron/crontabs/root
+echo "@reboot sudo bash /root/record_top.sh " >> /var/spool/cron/crontabs/root
+
 ## create database
 MYSQL_ROOT_PW=0ffs4t?
 MYSQL_WYUN_DB=wms
@@ -664,7 +670,7 @@ rm  /root/top.txt
 
 ### end ###
 
-´Ë´¦×öÁË±¸·İ£º(×¢Òâ´ÅÅÌ¿ÉÓÃ¿Õ¼ä3.7G)
+æ­¤å¤„åšäº†å¤‡ä»½ï¼š(æ³¨æ„ç£ç›˜å¯ç”¨ç©ºé—´3.7G)
 
 
 START_SECTOR=`cat /sys/block/sda/sda1/start`
