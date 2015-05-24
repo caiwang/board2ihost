@@ -5,6 +5,7 @@
 #  session  [seconds]
 #  idle [seconds]
 #  clientdns [ipaddr]
+#  garden [domainname]
 #  systime  [ntp local] [3.cn.pool.ntp.org 2015-5-23 10:47:00]
 #  wlansniff [on off]
 #  lansniff [on off]
@@ -21,6 +22,8 @@
 # bash /root/ihostset.sh idle 600
 # bash /root/ihostset.sh clientdns # to remove dns2
 # bash /root/ihostset.sh clientdns 202.106.46.151 # to set dns2
+# bash /root/ihostset.sh garden  # to remove customer uamdoamin
+# bash /root/ihostset.sh garden .baidu.com,.sina.com # to set customer uamdomain
 # bash /root/ihostset.sh systime local 'May 23 12:46:49 CST 2015'
 # bash /root/ihostset.sh systime ntp 
 # bash /root/ihostset.sh systime ntp 2.cn.pool.ntp.org
@@ -94,6 +97,17 @@ then
         DNS2='#HS_DNS2='
     fi
     sed  -i  "s|$LINE_CLIENTDNS|$DNS2|g"  /etc/chilli/defaults
+elif [ "$1" = 'garden' ]
+then
+    #UAMDOMAIN for chilli clients
+    LINE_GARDEN=`cat /etc/chilli/defaults | grep HS_UAMDOMAINS=`
+    GARDEN='HS_UAMDOMAINS=\".mtxwifi.com,.mtxwifi.net,.ruckuswireless.com'
+    if [ "-$2" != '-' ]; then
+        GARDEN=$GARDEN",$2\""
+    else
+        GARDEN=$GARDEN"\""
+    fi
+    sed  -i  "s|$LINE_GARDEN|$GARDEN|g"  /etc/chilli/defaults
 
 
 elif [ "$1" = 'systime' ]
