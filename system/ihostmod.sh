@@ -153,7 +153,7 @@ EOF
 
 #HS_WANIF=wlan0 # WAN Interface toward the Internet
 CHILLI_WAN_IF_OLD=`cat /etc/chilli/defaults | grep HS_WANIF=`
-HS_LANIF=wlan1 # Subscriber Interface for client devices
+#HS_LANIF=wlan1 # Subscriber Interface for client devices
 CHILLI_LAN_IF_OLD=`cat /etc/chilli/defaults | grep HS_LANIF=`
 
 #IGNORE_RESOLVCONF=yes
