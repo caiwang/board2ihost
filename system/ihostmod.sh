@@ -7,7 +7,7 @@
 #bash ihostmod.sh wlan0 p4p1 : smartphone connect to wlan0(hostapd), ihost uplink through p4p1 (dhcp required), no wlan sniffer,no lan sniffer
 #bash ihostmod.sh p4p1 p4p1 : smartphone connect to outside router, and then to ihost through p4p1(static ip), no wlan sniffer,no lan sniffer
 #bash ihostmod.sh p4p1 p4p2 : smartphone connect to outside router, and then to ihost through p4p1(static ip), and then to p4p2(static ip) -> internet
-#bash ihostmod.sh p4p1 p4p1 : smartphone connect to outside router, and then to ihost through p4p1(static ip), and then to p4p2(dynamic ip) -> internet
+#bash ihostmod.sh p4p1 p4p2dhcp : smartphone connect to outside router, and then to ihost through p4p1(static ip), and then to p4p2(dynamic ip) -> internet
 #bash ihostmod.sh x x wlan0 p4p1 : wlan sniffer on wlan0, lan sniffer on p4p1 (ihost with a wireless router)
 #bash ihostmod.sh x x 172.16.0.10/wlan100  p4p1 : wlan sniffer on rpcap://172.16.0.10/wlan100, lan sniffer on p4p1(ihost with a ruckus ap)
 #bash ihostmod.sh x x wlan0 wlan0 : wlan sniffer on wlan0, lan sniffer on wlan0(ihost without a wireless router or ruckus ap)
