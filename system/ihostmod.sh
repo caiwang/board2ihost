@@ -6,8 +6,10 @@
 #example:
 #bash ihostmod.sh wlan0 p4p1 : smartphone connect to wlan0(hostapd), ihost uplink through p4p1 (dhcp required), no wlan sniffer,no lan sniffer
 #bash ihostmod.sh p4p1 p4p1 : smartphone connect to outside router, and then to ihost through p4p1(static ip), no wlan sniffer,no lan sniffer
+#bash ihostmod.sh p4p1 p4p2 : smartphone connect to outside router, and then to ihost through p4p1(static ip), and then to p4p2(static ip) -> internet
+#bash ihostmod.sh p4p1 p4p1 : smartphone connect to outside router, and then to ihost through p4p1(static ip), and then to p4p2(dynamic ip) -> internet
 #bash ihostmod.sh x x wlan0 p4p1 : wlan sniffer on wlan0, lan sniffer on p4p1 (ihost with a wireless router)
-#bash ihostmod.sh x x 192.168.100.10/wlan100  p4p1 : wlan sniffer on rpcap://192.168.100.10/wlan100, lan sniffer on p4p1(ihost with a ruckus ap)
+#bash ihostmod.sh x x 172.16.0.10/wlan100  p4p1 : wlan sniffer on rpcap://172.16.0.10/wlan100, lan sniffer on p4p1(ihost with a ruckus ap)
 #bash ihostmod.sh x x wlan0 wlan0 : wlan sniffer on wlan0, lan sniffer on wlan0(ihost without a wireless router or ruckus ap)
 
 # should be excute in 
@@ -74,6 +76,33 @@ cat >> ./startup.sh << EOF
 ifconfig p4p1:10 up
 ip addr add 172.16.0.1/16 dev p4p1
 
+EOF
+}
+
+put_p4p1_2_connect_to_startup(){
+cat >> ./startup.sh << EOF
+# connect p4p1
+ifconfig p4p1 up
+ip addr add 172.16.0.1/16 dev p4p1
+
+EOF
+}
+
+put_p4p2_connect_to_startup(){
+cat >> ./startup.sh << EOF
+# connect p4p2 (dynamic ip)
+ifconfig p4p2 up
+dhclient p4p2
+
+EOF
+}
+
+put_p4p2_1_connect_to_startup(){
+cat >> ./startup.sh << EOF
+# connect p4p2 (static ip)
+ifconfig p4p2 up
+ip addr add 192.168.100.200/24 dev p4p2
+route add -net 0.0.0.0/0 gw 192.168.100.100
 EOF
 }
 
@@ -193,6 +222,44 @@ then
 
     sed  -i  "s|$DNSMASQ_RESOLVCONF|IGNORE_RESOLVCONF=yes|g"  /etc/default/dnsmasq
     sed  -i  "s|$DNSMASQ_RESOLVFILE|resolv-file=/etc/resolv.dnsmasq.conf|g"  /etc/dnsmasq.conf
+
+elif [ "$1" = 'p4p1' -a  "$2" = 'p4p2' ]
+then
+    WAN_IF='p4p2'
+    LAN_IF='p4p1'
+    MAN_IF='p4p1:9'
+
+    put_head_to_startup
+    put_p4p2_1_connect_to_startup
+    put_p4p1_2_connect_to_startup
+    put_dnsmasq_to_startup
+    put_iptables_to_startup
+    put_chilli_to_startup
+    put_manage_if_to_startup
+    put_p4p1_ip_rm_to_startup
+
+    sed  -i  "s|$DNSMASQ_RESOLVCONF|IGNORE_RESOLVCONF=yes|g"  /etc/default/dnsmasq
+    sed  -i  "s|$DNSMASQ_RESOLVFILE|resolv-file=/etc/resolv.dnsmasq.conf|g"  /etc/dnsmasq.conf
+
+
+elif [ "$1" = 'p4p1' -a  "$2" = 'p4p2dhcp' ]
+then
+    WAN_IF='p4p2'
+    LAN_IF='p4p1'
+    MAN_IF='p4p1:9'
+
+    put_head_to_startup
+    put_p4p2_connect_to_startup
+    put_p4p1_2_connect_to_startup
+    put_dnsmasq_to_startup
+    put_iptables_to_startup
+    put_chilli_to_startup
+    put_manage_if_to_startup
+    put_p4p1_ip_rm_to_startup
+
+    sed  -i  "s|$DNSMASQ_RESOLVCONF|#IGNORE_RESOLVCONF=yes|g"  /etc/default/dnsmasq
+    sed  -i  "s|$DNSMASQ_RESOLVFILE|#resolv-file=/etc/resolv.dnsmasq.conf|g"  /etc/dnsmasq.conf
+
 
 else
     echo "Error!!! check your input!!!"
