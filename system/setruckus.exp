@@ -1,0 +1,27 @@
+#!/usr/bin/expect -f
+set timeout 15
+
+set fd [open /root/ruckus r]
+set ip [gets $fd]
+set passwd [gets $fd]
+close $fd
+spawn ssh $ip
+
+expect {
+ "want to continue connecting" {send "yes\r"; exp_continue }
+ "Please login" {send "super\r"; exp_continue}
+}
+
+expect "password "
+send "$passwd\r"
+expect "rkscli"
+send "set capture wlan100 idle\r"
+expect "rkscli"
+send "get capture wlan100 state\r"
+expect "rkscli"
+send "set capture wlan100 stream no-bcp\r"
+expect "rkscli"
+send "get capture wlan100 state\r"
+expect "rkscli"
+send "exit\r"
+
