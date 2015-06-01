@@ -266,6 +266,9 @@ else
     exit 0
 fi
 
+# make sure we are using the right libpcap
+echo "ln  -sf  /usr/local/lib/libpcap.so.1.0.0  /usr/lib/i386-linux-gnu/libpcap.so.0.8"  >> ./startup.sh
+
 # update chilli config
 CHILLI_WAN_IF='HS_WANIF='$WAN_IF
 CHILLI_LAN_IF='HS_LANIF='$LAN_IF
