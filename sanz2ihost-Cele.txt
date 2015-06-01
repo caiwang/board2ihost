@@ -1,0 +1,682 @@
+###### Part 1 : Installation
+
+### download ubuntu server, write to udisk, boot from udisk
+http://releases.ubuntu.com/14.04/ubuntu-14.04.2-server-i386.iso
+
+install ubuntu
+user: ihost
+password: ihostatusspsp
+
+
+### login
+ihost ihostatusspsp
+
+### basic setup
+sudo passwd root
+# rootatusspsp
+su - root
+# rockatusspsp
+dpkg-reconfigure tzdata
+# 'Asia/Shanghai'
+apt-get update
+apt-get upgrade
+sed -i 's/ihost/ihost/g' /etc/hostname
+sed -i 's/ihost/ihost/g' /etc/hosts
+uname -a
+# Linux ihost 3.16.0-30-generic #40~14.04.1-Ubuntu SMP Thu Jan 15 17:45:15 UTC 2015 i686 i686 i686 GNU/Linux
+ls -la /etc/udev/rules.d/
+cat /etc/udev/rules.d/70-persistent-net.rules
+rm  /etc/udev/rules.d/70-persistent-net.rules
+ln -sf  /dev/null /etc/udev/rules.d/70-persistent-net.rules
+###
+#rm  /etc/udev/rules.d/70-persistent-net.rules
+#touch  /etc/udev/rules.d/70-persistent-net.rules
+
+
+# skip this step ------------
+e2label /dev/sda1 ihost
+sync
+
+### change size of the first sector (3000M)
+START_SECTOR=`cat /sys/block/mmcblk0/mmcblk0p1/start`
+fdisk /dev/mmcblk0  << EOF
+d
+n
+p
+1
+$START_SECTOR
++3000M 
+w
+
+EOF
+
+
+reboot
+
+### login
+rock rockatusspsp
+su - root rootatusspsp
+
+
+resize2fs /dev/mmcblk0p1
+---------------
+
+
+root@ihost:~# df -Th
+Filesystem     Type      Size  Used Avail Use% Mounted on
+/dev/sda1      ext4      2.7G  1.1G  1.6G  41% /
+none           tmpfs     4.0K     0  4.0K   0% /sys/fs/cgroup
+udev           devtmpfs  946M  4.0K  946M   1% /dev
+tmpfs          tmpfs     192M  612K  191M   1% /run
+none           tmpfs     5.0M     0  5.0M   0% /run/lock
+none           tmpfs     956M     0  956M   0% /run/shm
+none           tmpfs     100M     0  100M   0% /run/user
+root@ihost:~# 
+
+
+
+
+### get source packages & binary
+apt-get install -y git
+
+cd /usr/src
+git clone -b sanz-cele https://github.com/caiwang/board2ihost.git
+
+
+### install software package
+# common
+apt-get install -y mysql-server python-mysqldb  python-pexpect  dos2unix 
+# myslq root passwd: 0ffs4t?
+
+# sniffer
+apt-get install -y tshark iw
+
+# for winpcap complie
+apt-get install -y libpcap-dev flex bison
+
+# sms
+apt-get install -y gammu python-gammu
+
+# coova compile
+apt-get install -y debhelper libssl-dev libcurl4-gnutls-dev
+
+# dns
+apt-get install -y dnsmasq dnsutils
+
+# curl client for python,
+apt-get install -y libgtk2.0-dev python-requests
+
+# get network interfaces from python
+apt-get install -y python-netifaces
+
+# hostapd
+apt-get install -y hostapd
+apt-get install -y haveged 
+
+# wireless connection to uplink ssid
+apt-get install -y wireless-tools wpasupplicant
+
+# ruckus ssh
+apt-get install -y expect
+
+# reserved
+apt-get install -y vlan
+
+# for coova 1.3.0 (.deb from coova.org)
+apt-get install -y haserl
+#Setting up haserl (0.9.32-1)
+
+
+root@ihost:~# df -Th
+Filesystem     Type      Size  Used Avail Use% Mounted on
+/dev/sda1      ext4      2.7G  1.6G  1.1G  61% /
+none           tmpfs     4.0K     0  4.0K   0% /sys/fs/cgroup
+udev           devtmpfs  946M  4.0K  946M   1% /dev
+tmpfs          tmpfs     192M  632K  191M   1% /run
+none           tmpfs     5.0M     0  5.0M   0% /run/lock
+none           tmpfs     956M     0  956M   0% /run/shm
+none           tmpfs     100M     0  100M   0% /run/user
+root@ihost:~# 
+
+
+
+
+root@ihost:~# cd /usr/src
+root@ihost:/usr/src# ls
+linux-headers-3.16.0-30  linux-headers-3.16.0-30-generic
+
+#root@ihost:/usr/src# wget http://ap.coova.org/chilli/coova-chilli_1.3.0_i386.deb
+cp  /usr/src/board2ihost/compiled/coova-chilli_1.3.0_i386.deb  /usr/src/
+
+
+
+### wlcap
+cd /usr/src/board2ihost
+git pull
+cp  /usr/src/board2ihost/compiled/wlcap  /usr/bin/wlcap
+cp  /usr/src/board2ihost/compiled/wlcap  /usr/bin/netcap
+chmod  +x  /usr/bin/wlcap
+chmod  +x  /usr/bin/netcap
+
+
+
+### insserv fix
+ln  -sf  /usr/lib/insserv/insserv  /sbin/insserv
+
+# remove auto start of dnsmasq
+insserv -r dnsmasq
+
+### resolvconf updated by system dynamiclly
+#dpkg-reconfigure resolvconf   
+ls -l /etc/resolv.conf
+# lrwxrwxrwx 1 root root 29 Apr  5 11:02 /etc/resolv.conf -> ../run/resolvconf/resolv.conf
+
+
+# config hostapd (standard)
+
+cat /etc/default/hostapd | grep DAEMON_CONF=
+sed  -i  's|#DAEMON_CONF=""|DAEMON_CONF="/etc/hostapd/hostapd.conf.std"|g'  /etc/default/hostapd
+cat /etc/default/hostapd | grep DAEMON_CONF=
+insserv -r hostapd
+
+cat >> /etc/hostapd/hostapd.conf.std << EOF
+# The interface to listen on
+interface=wlan0
+
+# The driver that is being used by the WiFi adapte
+driver=nl80211
+
+# SSID or Network name
+ssid=mtxwifi
+# Setting to Wireless G mode. A, B, and G are available
+hw_mode=g
+# Working channel
+channel=1
+
+# Open without authtication
+auth_algs=1
+wmm_enabled=0
+
+max_num_sta=15
+#wpa=2 
+#wpa_passphrase=11112222
+EOF
+
+# testing
+#hostapd -dd /etc/hostapd/hostapd.conf.std
+
+
+
+# wlan0 connect to wifi
+
+
+
+cat  >> /etc/wpa_supplicant.conf << EOF
+ctrl_interface=/var/run/wpa_supplicant
+network={
+   ssid="YOUR SSID"
+   psk="YOUR SSID PSK"
+}
+EOF
+
+### connect to wifi command line
+#ifconfig wlan0 up
+#wpa_supplicant -B -iwlan0 -c /etc/wpa_supplicant.conf -Dwext
+#dhclient wlan0
+
+### or connect to wifi at reboot
+#cat >>  /etc/network/interfaces.d/wlan0 << EOF
+#auto wlan0
+#iface wlan0 inet dhcp
+#wpa-conf /etc/wpa_supplicant.conf
+#EOF
+
+### install coova
+cd /usr/src
+dpkg -i coova-chilli_1.3.0_i386.deb
+# enable chilli
+cat /etc/default/chilli | grep START_CHILLI=
+# START_CHILLI=0
+sed -i 's|START_CHILLI=0|START_CHILLI=1|g' /etc/default/chilli
+cat /etc/default/chilli | grep START_CHILLI=
+# START_CHILLI=1
+root@ihost:/usr/src# dpkg -i coova-chilli_1.3.0_i386.deb 
+Selecting previously unselected package coova-chilli.
+(Reading database ... 70148 files and directories currently installed.)
+Preparing to unpack coova-chilli_1.3.0_i386.deb ...
+Unpacking coova-chilli (1.3.0) ...
+Setting up coova-chilli (1.3.0) ...
+Chilli default off. Look at /etc/default/chilli
+Processing triggers for man-db (2.6.7.1-1ubuntu1) ...
+Processing triggers for ureadahead (0.100.0-16) ...
+root@ihost:/usr/src# 
+root@ihost:/usr/src# 
+root@ihost:/usr/src# cat /etc/default/chilli | grep START_CHILLI=
+START_CHILLI=0
+root@ihost:/usr/src# # START_CHILLI=0
+root@ihost:/usr/src# sed -i 's|START_CHILLI=0|START_CHILLI=1|g' /etc/default/chilli
+root@ihost:/usr/src# cat /etc/default/chilli | grep START_CHILLI=
+START_CHILLI=1
+root@ihost:/usr/src# service chilli start
+Starting chilli: SIOCSIFADDR: No such device
+eth1: ERROR while getting interface flags: No such device
+chilli.
+root@ihost:/usr/src# 
+
+
+
+
+### install libpcap
+cp  /usr/src/board2ihost/compiled/libpcap.so.1.0.0  /usr/local/lib/libpcap.so.1.0.0
+cd  /usr/src
+mv  /usr/lib/i386-linux-gnu/libpcap.so.0.8  /usr/lib/i386-linux-gnu/libpcap.so.0.8.bak
+ln  -sf  /usr/local/lib/libpcap.so.1.0.0  /usr/lib/i386-linux-gnu/libpcap.so.0.8
+# switch back
+#unlink  /usr/lib/arm-linux-gnueabihf/libpcap.so.0.8
+#mv  /usr/lib/arm-linux-gnueabihf/libpcap.so.0.8.bak  /usr/lib/arm-linux-gnueabihf/libpcap.so.0.8
+
+
+### install java 8
+cd  /usr/src
+http://www.oracle.com/technetwork/java/javase/downloads/
+http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html
+# or : cd path-to-jdk
+#cp jdk-8u45-linux-i586.gz /usr/src
+cd  /usr/src
+tar zxvf jdk-8u45-linux-i586.tar.gz -C /opt
+update-alternatives --install /usr/bin/javac javac /opt/jdk1.8.0_45/bin/javac 1
+update-alternatives --install /usr/bin/java java /opt/jdk1.8.0_45/bin/java 1
+update-alternatives --config javac
+update-alternatives --config java
+java -version
+# java version "1.8.0_45"
+javac -version
+# javac 1.8.0_45
+
+#https://bugs.launchpad.net/ubuntu/+source/mysql-dfsg-5.0/+bug/244406 
+#avoid bug when load data file into mysql table
+#
+apt-get install -y apparmor-utils 
+aa-complain /usr/sbin/mysqld
+/etc/init.d/apparmor reload
+
+
+cp  /usr/src/board2ihost/system/ihostmod.sh  /root/ihostmod.sh 
+cp  /usr/src/board2ihost/system/stamod.sh  /root/stamod.sh 
+cp  /usr/src/board2ihost/system/apmod.sh  /root/apmod.sh 
+
+cp  /usr/src/board2ihost/system/dnsmasq.dhcp.on.sh  /root/dnsmasq.dhcp.on.sh 
+cp  /usr/src/board2ihost/system/dnsmasq.dhcp.off.sh  /root/dnsmasq.dhcp.off.sh 
+
+cp  /usr/src/board2ihost/system/setruckus.sh  /root/setruckus.sh 
+cp  /usr/src/board2ihost/system/setruckus.exp  /root/setruckus.exp 
+
+cp  /usr/src/board2ihost/system/setcapwlan.off.sh  /root/setcapwlan.off.sh 
+cp  /usr/src/board2ihost/system/setcapwlan.on.sh  /root/setcapwlan.on.sh 
+
+
+cp  /usr/src/board2ihost/system/setcaplan.off.sh  /root/setcaplan.off.sh 
+cp  /usr/src/board2ihost/system/setcaplan.on.sh  /root/setcaplan.on.sh 
+
+cp  /usr/src/board2ihost/system/record_top.sh  /root/record_top.sh 
+
+
+### clear up
+rm  -rf  /urs/src/* 
+
+root@ihost:~# df -Th
+Filesystem     Type      Size  Used Avail Use% Mounted on
+/dev/sda1      ext4      2.7G  2.1G  529M  80% /
+none           tmpfs     4.0K     0  4.0K   0% /sys/fs/cgroup
+udev           devtmpfs  946M  4.0K  946M   1% /dev
+tmpfs          tmpfs     192M  2.3M  189M   2% /run
+none           tmpfs     5.0M     0  5.0M   0% /run/lock
+none           tmpfs     956M     0  956M   0% /run/shm
+none           tmpfs     100M     0  100M   0% /run/user
+/dev/sdb1      fuseblk   7.5G  6.8G  753M  91% /home/sd
+root@ihost:~# 
+
+
+
+
+
+###### Part 2 : Configuration
+
+
+### dnsmasq
+# stop NetworkManager's dnsmasq 
+cat /etc/NetworkManager/NetworkManager.conf | grep dnsmasq
+# dns=dnsmasq
+#sed  -i  's/dns=dnsmasq/#dns=dnsmasq/g'   /etc/NetworkManager/NetworkManager.conf
+#cat /etc/NetworkManager/NetworkManager.conf | grep dnsmasq
+#  #dns=dnsmasq
+
+# upstream dns server : not use /var/run/dnsmasq/resolv.conf
+cat /etc/default/dnsmasq  | grep IGNORE_RESOLVCONF
+#  #IGNORE_RESOLVCONF=yes
+sed  -i  's|#IGNORE_RESOLVCONF=yes|IGNORE_RESOLVCONF=yes|g'  /etc/default/dnsmasq
+cat /etc/default/dnsmasq  | grep IGNORE_RESOLVCONF
+#  IGNORE_RESOLVCONF=yes
+
+# upstream dns server : use /etc/resolv.dnsmasq.conf
+# use case : p1p1 has a static ip, an upstream dns server must be set mannuly
+cat >> /etc/resolv.dnsmasq.conf  <<EOF
+nameserver 192.168.100.100
+EOF
+
+cat /etc/resolv.dnsmasq.conf 
+# nameserver 192.168.100.100
+cat  /etc/dnsmasq.conf | grep resolv-file
+# #resolv-file=
+sed -i 's|#resolv-file=|resolv-file=/etc/resolv.dnsmasq.conf|g' /etc/dnsmasq.conf
+cat  /etc/dnsmasq.conf | grep resolv-file
+# resolv-file=/etc/resolv.dnsmasq.conf
+
+# setup listen address
+cat  /etc/dnsmasq.conf | grep listen-address
+# #listen-address=
+sed -i 's|#listen-address=|listen-address=172.16.0.1,127.0.0.1|g' /etc/dnsmasq.conf
+cat  /etc/dnsmasq.conf | grep listen-address
+# listen-address=172.16.0.1,127.0.0.1
+
+# check strict-order & no-hosts
+cat  /etc/dnsmasq.conf | grep strict-order
+# #strict-order
+cat  /etc/dnsmasq.conf | grep no-hosts      
+# #no-hosts
+
+# dns record for mtxwifi
+echo  'address=/mtxwifi.net/172.16.0.1'  >>  /etc/dnsmasq.conf
+# dns record for any websit (dns server works without internet connection)
+echo  '#address=/#/1.1.1.1'  >>  /etc/dnsmasq.conf
+# sed  -i  's|#address=/#/1.1.1.1|address=/#/1.1.1.1|g'  /etc/dnsmasq.conf
+# sed  -i  's|address=/#/1.1.1.1|#address=/#/1.1.1.1|g'  /etc/dnsmasq.conf
+cat  /etc/dnsmasq.conf | grep address=
+
+# act as dhcp server before coova setup (temporarily)
+echo  'interface=wlan1'  >>  /etc/dnsmasq.conf
+echo  'bind-interfaces'  >>  /etc/dnsmasq.conf
+echo  'except-interface=lo'  >>  /etc/dnsmasq.conf
+echo  'dhcp-range=wlan1,172.16.0.100,172.16.0.200,2h'  >>  /etc/dnsmasq.conf 
+echo  'dhcp-option=option:router,172.16.0.1'  >>  /etc/dnsmasq.conf
+echo  'dhcp-option=option:dns-server,0.0.0.0,172.16.0.1'  >>  /etc/dnsmasq.conf
+echo  'dhcp-option=option:domain-name,mtxwifi.net'  >>  /etc/dnsmasq.conf
+
+# switch back dnsmasq setting : p1p1 up link, ip address assigned dynamicly(together with an upstream dns server)
+sed  -i  's|IGNORE_RESOLVCONF=yes|#IGNORE_RESOLVCONF=yes|g'  /etc/default/dnsmasq
+sed  -i  's|resolv-file=/etc/resolv.dnsmasq.conf|#resolv-file=/etc/resolv.dnsmasq.conf|g'  /etc/dnsmasq.conf
+
+
+
+### setting up hostapd
+
+
+# change wifi configuration
+sed  -i  's|interface=wlan1|interface=wlan1|g'  /etc/hostapd/hostapd.conf.std
+sed  -i  's|ssid=mtxwifi|ssid=mtxwifi|g'  /etc/hostapd/hostapd.conf.std
+sed  -i  's|channel=8|channel=8|g'  /etc/hostapd/hostapd.conf.std
+sed  -i  's|max_num_sta=15|max_num_sta=15|g'  /etc/hostapd/hostapd.conf.std
+sed  -i  's|#wpa=2|#wpa=2|g'  /etc/hostapd/hostapd.conf.std
+sed  -i  's|#wpa_passphrase=11112222|#wpa_passphrase=11112222|g'  /etc/hostapd/hostapd.conf.std
+
+
+
+### coova chilli
+
+# get chilli default config
+cat /etc/chilli/defaults | grep HS_WANIF=
+# # HS_WANIF=eth0            # WAN Interface toward the Internet
+cat /etc/chilli/defaults | grep HS_LANIF=
+# HS_LANIF=eth1              # Subscriber Interface for client devices
+cat /etc/chilli/defaults | grep HS_NETWORK=
+# HS_NETWORK=10.1.0.0        # HotSpot Network (must include HS_UAMLISTEN)
+cat /etc/chilli/defaults | grep HS_NETMASK=
+# HS_NETMASK=255.255.255.0   # HotSpot Network Netmask
+cat /etc/chilli/defaults | grep HS_UAMLISTEN=
+# HS_UAMLISTEN=10.1.0.1      # HotSpot IP Address (on subscriber network)
+cat /etc/chilli/defaults | grep HS_DYNIP=
+# # HS_DYNIP=
+cat /etc/chilli/defaults | grep HS_DYNIP_MASK=
+# # HS_DYNIP_MASK=255.255.255.0
+cat /etc/chilli/defaults | grep HS_STATIP=
+# # HS_STATIP=
+cat /etc/chilli/defaults | grep HS_STATIP_MASK=
+# # HS_STATIP_MASK=255.255.255.0
+cat /etc/chilli/defaults | grep HS_DNS_DOMAIN=
+# # HS_DNS_DOMAIN=
+cat /etc/chilli/defaults | grep HS_DNS1=
+# HS_DNS1=208.67.222.222
+cat /etc/chilli/defaults | grep HS_DNS2=
+# HS_DNS2=208.67.220.220
+cat /etc/chilli/defaults | grep HS_UAMALLOW=
+# HS_UAMALLOW=www.coova.org
+cat /etc/chilli/defaults | grep HS_UAMDOMAINS=
+# # HS_UAMDOMAINS=".paypal.com,.paypalobjects.com"
+cat /etc/chilli/defaults | grep HS_UAMSERVER=
+# HS_UAMSERVER=$HS_UAMLISTEN
+cat /etc/chilli/defaults | grep HS_UAMFORMAT=
+# HS_UAMFORMAT=http://\$HS_UAMLISTEN:\$HS_UAMUIPORT/www/login.chi
+cat /etc/chilli/defaults | grep HS_UAMHOMEPAGE=
+# HS_UAMHOMEPAGE=http://\$HS_UAMLISTEN:\$HS_UAMPORT/www/coova.html
+
+
+# prepare ihost.html
+cp  /etc/chilli/www/coova.html  /etc/chilli/www/ihost.html
+sed  -i  's|<title>Coova</title>|<title>ihost</title>|g'  /etc/chilli/www/ihost.html 
+sed  -i  's|setTimeout(redirect, 5000);|setTimeout(redirect, 10);|g'  /etc/chilli/www/ihost.html 
+sed  -i  's|< vertical-align:middle;text-align:center;color:grey;">|< vertical-align:middle;text-align:left;color:grey;">|g' /etc/chilli/www/ihost.html 
+sed  -i  's|<a href="#" onclick="javascript:return redirect();">||g'  /etc/chilli/www/ihost.html 
+sed  -i  's|<img src="coova.jpg" alt="" border="0" height="39" width="123"/></a>||g'  /etc/chilli/www/ihost.html 
+
+# prepare ihome.html
+echo 'Hello !' >  /etc/chilli/www/ihome.html
+
+# set chilli config in /etc/chilli/defaults
+sed  -i  's|# HS_WANIF=eth0|HS_WANIF=p1p1|g'  /etc/chilli/defaults
+sed  -i  's|HS_LANIF=eth1|HS_LANIF=wlan0|g'  /etc/chilli/defaults
+sed  -i  's|HS_NETWORK=10.1.0.0|HS_NETWORK=172.16.0.1|g'  /etc/chilli/defaults
+sed  -i  's|HS_NETMASK=255.255.255.0|HS_NETMASK=255.255.0.0|g'  /etc/chilli/defaults
+sed  -i  's|HS_UAMLISTEN=10.1.0.1|HS_UAMLISTEN=172.16.0.1|g'  /etc/chilli/defaults
+
+sed  -i  's|# HS_DYNIP=|HS_DYNIP=172.16.0.100|g'  /etc/chilli/defaults
+sed  -i  's|# HS_DYNIP_MASK=255.255.255.0|HS_DYNIP_MASK=255.255.0.0|g'  /etc/chilli/defaults
+sed  -i  's|# HS_STATIP=|HS_STATIP=172.16.0.10|g'  /etc/chilli/defaults
+sed  -i  's|# HS_STATIP_MASK=255.255.255.0|HS_STATIP_MASK=255.255.0.0|g'  /etc/chilli/defaults
+sed  -i  's|# HS_DNS_DOMAIN=|HS_DNS_DOMAIN=mtxwifi.net|g'  /etc/chilli/defaults
+
+sed  -i  's|HS_DNS1=208.67.222.222|HS_DNS1=172.16.0.1|g'  /etc/chilli/defaults
+sed  -i  's|HS_DNS2=208.67.220.220|#HS_DNS2=|g'  /etc/chilli/defaults
+sed  -i  's|HS_UAMALLOW=www.coova.org|HS_UAMALLOW=172.16.0.0/16,ntp.ruckuswireless.com|g'  /etc/chilli/defaults
+sed  -i  's|# HS_UAMDOMAINS=".paypal.com,.paypalobjects.com"|HS_UAMDOMAINS=".mtxwifi.com,.mtxwifi.net,.ruckuswireless.com"|g'  /etc/chilli/defaults
+sed  -i  's|HS_UAMSERVER=$HS_UAMLISTEN|HS_UAMSERVER=172.16.0.1|g'  /etc/chilli/defaults
+
+sed  -i  's|HS_UAMFORMAT=http://\\$HS_UAMLISTEN:\\$HS_UAMUIPORT/www/login.chi|HS_UAMFORMAT=http://\\$HS_UAMLISTEN:\\$HS_UAMUIPORT/www/ihome.html|g'  /etc/chilli/defaults
+sed  -i  's|HS_UAMHOMEPAGE=http://\\$HS_UAMLISTEN:\\$HS_UAMPORT/www/coova.html|HS_UAMHOMEPAGE=http://\\$HS_UAMLISTEN:\\$HS_UAMPORT/www/ihost.html|g'  /etc/chilli/defaults
+
+
+# check new config
+cat /etc/chilli/defaults | grep HS_WANIF=
+cat /etc/chilli/defaults | grep HS_LANIF=
+cat /etc/chilli/defaults | grep HS_NETWORK=
+cat /etc/chilli/defaults | grep HS_NETMASK=
+cat /etc/chilli/defaults | grep HS_UAMLISTEN=
+cat /etc/chilli/defaults | grep HS_DYNIP=
+cat /etc/chilli/defaults | grep HS_DYNIP_MASK=
+cat /etc/chilli/defaults | grep HS_STATIP=
+cat /etc/chilli/defaults | grep HS_STATIP_MASK=
+cat /etc/chilli/defaults | grep HS_DNS_DOMAIN=
+cat /etc/chilli/defaults | grep HS_DNS1=
+cat /etc/chilli/defaults | grep HS_DNS2=
+cat /etc/chilli/defaults | grep HS_UAMALLOW=
+cat /etc/chilli/defaults | grep HS_UAMDOMAINS=
+cat /etc/chilli/defaults | grep HS_UAMSERVER=
+cat /etc/chilli/defaults | grep HS_UAMFORMAT=
+cat /etc/chilli/defaults | grep HS_UAMHOMEPAGE=
+
+
+# new rule in up.sh : enable hotspot nat
+echo '# for hotspot nat' >> /etc/chilli/up.sh 
+echo 'iptables -I POSTROUTING -t nat -o $HS_WANIF -j MASQUERADE' >> /etc/chilli/up.sh
+# new rule in up.sh : enable ssh remote login from tun interface (and mysql remote login)
+echo '# for ssh to tun interface' >> /etc/chilli/up.sh
+echo 'iptables -t filter -I INPUT  -j ACCEPT' >> /etc/chilli/up.sh
+# check for new rules
+tail /etc/chilli/up.sh
+
+# turn off dnsmasq's dhcp 
+bash /root/dnsmasq.dhcp.off.sh
+
+### setup p1p1
+rm /etc/network/interfaces
+
+cat >>  /etc/network/interfaces  << EOF
+# This file describes the network interfaces available on your system
+# and how to activate them. For more information, see interfaces(5).
+
+# The loopback network interface
+auto lo
+iface lo inet loopback
+
+EOF
+
+
+# turn off p1p1
+rm /etc/network/interfaces.d/p1p1 
+cat >> /etc/network/interfaces.d/p1p1 << EOF
+#auto p1p1
+#iface p1p1 inet dhcp
+iface p1p1 inet static
+EOF
+
+# turn on p1p1:9
+rm /etc/network/interfaces.d/p1p1:9
+cat >> /etc/network/interfaces.d/p1p1:9 << EOF
+#auto p1p1:9
+iface p1p1:9 inet static
+EOF
+
+# turn off p1p1:10
+rm /etc/network/interfaces.d/p1p1:10
+cat >> /etc/network/interfaces.d/p1p1:10 << EOF
+#auto p1p1:10
+iface p1p1:10 inet static
+EOF
+
+
+cp /usr/src/board2ihost/system/ihostmod.sh /root
+cd /root
+# switch mode to wlan0 in -> p1p1 out
+#bash ihostmod.sh wlan0 p1p1dhcp wlan0 wlan0
+bash ihostmod.sh p4p1 p1p1dhcp 172.16.0.10/wlan100 p4p1
+ls -l startup.sh
+sed -i '13a\. /root/startup.sh' /etc/init.d/rc.local
+
+mkdir /wms
+
+
+
+fix:
+-----
+
+cp  /usr/src/board2ihost/system/setcaplan.off.sh  /root/setcaplan.off.sh 
+cp  /usr/src/board2ihost/system/setcaplan.on.sh  /root/setcaplan.on.sh 
+cp  /usr/src/board2ihost/system/ihostset.sh  /root/ihostset.sh 
+
+echo "9-59/10 * * * * sudo bash /root/setcapwlan.off.sh & " >> /var/spool/cron/crontabs/root
+echo "*/10 * * * * sudo bash /root/setcapwlan.on.sh & " >> /var/spool/cron/crontabs/root
+echo "9-59/10 * * * * sudo bash /root/setcaplan.off.sh & " >> /var/spool/cron/crontabs/root
+echo "*/10 * * * * sudo bash /root/setcaplan.on.sh & " >> /var/spool/cron/crontabs/root
+echo "@reboot sudo bash /root/record_top.sh " >> /var/spool/cron/crontabs/root
+
+crontab -e
+#add a blank line in the end of file
+
+#echo -ne "\n" >> /var/spool/cron/crontabs/root
+#chown root:crontab /var/spool/cron/crontabs/root
+#chown root:root /var/spool/cron/crontabs/root
+
+
+## create database
+MYSQL_ROOT_PW=0ffs4t?
+MYSQL_WYUN_DB=wms
+MYSQL_WYUN_USER=wms
+MYSQL_WYUN_PW=wms
+mysql -uroot -p$MYSQL_ROOT_PW -e "CREATE DATABASE $MYSQL_WYUN_DB"
+
+mysql -uroot -p$MYSQL_ROOT_PW wms<<EOFMYSQL
+DROP TABLE IF EXISTS 802_11_packet;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE 802_11_packet (
+  id int(11) NOT NULL AUTO_INCREMENT,
+  mac varchar(17) DEFAULT NULL,
+  pkttime varchar(10) DEFAULT NULL,
+  pktsignal varchar(2048) DEFAULT NULL,
+  create_t datetime DEFAULT NULL,
+  src_ip_mac varchar(17) DEFAULT NULL,
+  PRIMARY KEY (id),
+  KEY packettime (pkttime),
+  KEY mac (mac)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+EOFMYSQL
+
+mysql -uroot -p$MYSQL_ROOT_PW wms<<EOFMYSQL
+DROP TABLE IF EXISTS eth_packet;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE eth_packet (
+  id int(11) NOT NULL AUTO_INCREMENT,
+  mac varchar(17) DEFAULT NULL,
+  pkttime varchar(10) DEFAULT NULL,
+  srcip varchar(16) DEFAULT NULL,
+  destip varchar(16) DEFAULT NULL,
+  uri varchar(4096) DEFAULT NULL,
+  create_t datetime DEFAULT NULL,
+  src_ip_mac varchar(17) DEFAULT NULL,
+  PRIMARY KEY (id),
+  KEY packettime (pkttime),
+  KEY mac (mac)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;	
+EOFMYSQL
+
+
+cd /usr/src
+rm  -rf  board2ihost
+git clone -b ver2 https://github.com/usspupdates/ihostupd.git
+
+
+reboot
+
+### end ###
+
+
+
+top - 21:27:18 up 3 min,  1 user,  load average: 0.03, 0.08, 0.05
+Tasks: 112 total,   1 running, 111 sleeping,   0 stopped,   0 zombie
+%Cpu0  :  0.0 us,  0.0 sy,  0.0 ni,100.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+%Cpu1  :  0.0 us,  0.0 sy,  0.0 ni,100.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+%Cpu2  :  0.0 us,  0.3 sy,  0.0 ni, 99.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+%Cpu3  :  0.0 us,  0.7 sy,  0.0 ni, 99.3 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+KiB Mem:   1956308 total,   192500 used,  1763808 free,    13760 buffers
+KiB Swap:        0 total,        0 used,        0 free.    76756 cached Mem
+
+
+
+# bootup with another u-disk
+START_SECTOR=`cat /sys/block/sda/sda1/start`
+SIZE_SECTOR=`cat /sys/block/sda/sda1/size`
+echo $(($START_SECTOR+$SIZE_SECTOR))
+nohup dd if=/dev/sda of=full.0528.img conv=sync count=$(($START_SECTOR+$SIZE_SECTOR))
+
+
+
+#-----------
+
+
+# change push url
+sed  -i  's|HS_UAMFORMAT=http://\\$HS_UAMLISTEN:\\$HS_UAMUIPORT/www/ihome.html|HS_UAMFORMAT=http://mtxwifi.net/index.html|g'  /etc/chilli/defaults
+
+
+
