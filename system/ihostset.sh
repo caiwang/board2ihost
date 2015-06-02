@@ -155,12 +155,10 @@ then
 
 elif [ "$1" = 'upstreamdns' ]
 then
-    if [ "-$2" != '-' ]; then
-        if [ "$2" = '-' ]; then
-            sed -i '$ d' /etc/resolv.dnsmasq.conf
-        else
-            echo 'nameserver '"$2" >> /etc/resolv.dnsmasq.conf
-        fi
+    if [ "-$2" = '-' ]; then
+        sed -i '$ d' /etc/resolv.dnsmasq.conf
+    else
+        echo 'nameserver '"$2" >> /etc/resolv.dnsmasq.conf
     fi
 
 
