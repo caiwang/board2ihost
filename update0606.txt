@@ -1,0 +1,266 @@
+
+
+### get source packages & binary
+
+cd /usr/src
+export GIT_SSL_NO_VERIFY=1 
+git clone -b udoo https://github.com/caiwang/board2ihost.git
+
+
+
+# hostapd
+apt-get install -y --force-yes haveged 
+
+# wireless connection to uplink ssid
+apt-get install -y wireless-tools wpasupplicant
+
+# ruckus ssh
+apt-get install -y --force-yes expect
+
+
+
+### wlcap
+cd /usr/src/board2ihost
+git pull
+cp  /usr/src/board2ihost/compiled/wlcap  /usr/bin/wlcap
+cp  /usr/src/board2ihost/compiled/wlcap  /usr/bin/netcap
+chmod  +x  /usr/bin/wlcap
+chmod  +x  /usr/bin/netcap
+
+
+# remove auto start of dnsmasq
+insserv -r dnsmasq
+
+# remove chilli from auto start
+insserv -r chilli
+
+### resolvconf updated by system dynamiclly
+#dpkg-reconfigure resolvconf   
+ls -l /etc/resolv.conf
+# lrwxrwxrwx 1 root root 29 Apr  5 11:02 /etc/resolv.conf -> ../run/resolvconf/resolv.conf
+
+
+# config hostapd (standard)
+
+cat /etc/default/hostapd | grep DAEMON_CONF=
+sed  -i  's|#DAEMON_CONF=""|DAEMON_CONF="/etc/hostapd/hostapd.conf.std"|g'  /etc/default/hostapd
+cat /etc/default/hostapd | grep DAEMON_CONF=
+insserv -r hostapd
+
+cat >> /etc/hostapd/hostapd.conf.std << EOF
+# The interface to listen on
+interface=wlan0
+
+# The driver that is being used by the WiFi adapte
+driver=nl80211
+
+# SSID or Network name
+ssid=mtxwifi
+# Setting to Wireless G mode. A, B, and G are available
+hw_mode=g
+# Working channel
+channel=1
+
+# Open without authtication
+auth_algs=1
+wmm_enabled=0
+
+max_num_sta=15
+#wpa=2 
+#wpa_passphrase=11112222
+EOF
+
+# testing
+#hostapd -dd /etc/hostapd/hostapd.conf.std
+
+
+
+# wlan0 connect to wifi
+
+
+
+cat  >> /etc/wpa_supplicant.conf << EOF
+ctrl_interface=/var/run/wpa_supplicant
+network={
+   ssid="YOUR SSID"
+   psk="YOUR SSID PSK"
+}
+EOF
+
+### connect to wifi command line
+#ifconfig wlan0 up
+#wpa_supplicant -B -iwlan0 -c /etc/wpa_supplicant.conf -Dwext
+#dhclient wlan0
+### or connect to wifi at reboot
+#cat >>  /etc/network/interfaces.d/wlan0 << EOF
+#auto wlan0
+#iface wlan0 inet dhcp
+#wpa-conf /etc/wpa_supplicant.conf
+#EOF
+
+
+
+cp  /usr/src/board2ihost/system/ihostmod.sh  /root/ihostmod.sh 
+cp  /usr/src/board2ihost/system/stamod.sh  /root/stamod.sh 
+cp  /usr/src/board2ihost/system/apmod.sh  /root/apmod.sh 
+
+cp  /usr/src/board2ihost/system/dnsmasq.dhcp.on.sh  /root/dnsmasq.dhcp.on.sh 
+cp  /usr/src/board2ihost/system/dnsmasq.dhcp.off.sh  /root/dnsmasq.dhcp.off.sh 
+
+cp  /usr/src/board2ihost/system/setruckus.sh  /root/setruckus.sh 
+cp  /usr/src/board2ihost/system/setruckus.exp  /root/setruckus.exp 
+
+cp  /usr/src/board2ihost/system/setcapwlan.off.sh  /root/setcapwlan.off.sh 
+cp  /usr/src/board2ihost/system/setcapwlan.on.sh  /root/setcapwlan.on.sh 
+
+
+cp  /usr/src/board2ihost/system/setcaplan.off.sh  /root/setcaplan.off.sh 
+cp  /usr/src/board2ihost/system/setcaplan.on.sh  /root/setcaplan.on.sh 
+
+cp  /usr/src/board2ihost/system/record_top.sh  /root/record_top.sh 
+
+cp  /usr/src/board2ihost/system/ihostset.sh  /root/ihostset.sh 
+
+
+
+### clear up
+rm  -rf  /urs/src/* 
+
+
+
+
+### dnsmasq
+
+# switch back dnsmasq setting : p1p1 up link, ip address assigned dynamicly(together with an upstream dns server)
+sed  -i  's|IGNORE_RESOLVCONF=yes|#IGNORE_RESOLVCONF=yes|g'  /etc/default/dnsmasq
+sed  -i  's|resolv-file=/etc/resolv.dnsmasq.conf|#resolv-file=/etc/resolv.dnsmasq.conf|g'  /etc/dnsmasq.conf
+
+
+
+### setting up hostapd
+
+
+# change wifi configuration
+sed  -i  's|interface=wlan0|interface=wlan0|g'  /etc/hostapd/hostapd.conf.std
+sed  -i  's|ssid=mtxwifi|ssid=mtxwifi|g'  /etc/hostapd/hostapd.conf.std
+sed  -i  's|channel=1|channel=1|g'  /etc/hostapd/hostapd.conf.std
+sed  -i  's|max_num_sta=15|max_num_sta=15|g'  /etc/hostapd/hostapd.conf.std
+sed  -i  's|#wpa=2|#wpa=2|g'  /etc/hostapd/hostapd.conf.std
+sed  -i  's|#wpa_passphrase=11112222|#wpa_passphrase=11112222|g'  /etc/hostapd/hostapd.conf.std
+
+
+
+### coova chilli
+
+# set chilli config in /etc/chilli/defaults
+sed  -i  's|HS_LANIF=eth0:10|HS_LANIF=wlan0|g'  /etc/chilli/defaults
+sed  -i  's|HS_DNS2=202.99.166.4|#HS_DNS2=|g'  /etc/chilli/defaults
+
+
+# turn off dnsmasq's dhcp 
+bash /root/dnsmasq.dhcp.off.sh
+
+### setup eth0
+rm /etc/network/interfaces
+
+cat >> /etc/network/interfaces <<EOF
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet dhcp
+
+auto eth0:9
+
+auto eth0:10
+
+EOF
+
+
+
+
+cd /root
+# switch mode to wlan0 in -> eth0 out
+bash ihostmod.sh wlan0 eth0 wlan0 wlan0
+ls -l startup.sh
+
+cat -n /etc/init.d/rc.local
+sed -i '13a\. /root/startup.sh' /etc/init.d/rc.local
+
+
+echo "9-59/10 * * * * sudo bash /root/setcapwlan.off.sh & " >> /var/spool/cron/crontabs/root
+echo "*/10 * * * * sudo bash /root/setcapwlan.on.sh & " >> /var/spool/cron/crontabs/root
+echo "9-59/10 * * * * sudo bash /root/setcaplan.off.sh & " >> /var/spool/cron/crontabs/root
+echo "*/10 * * * * sudo bash /root/setcaplan.on.sh & " >> /var/spool/cron/crontabs/root
+echo "@reboot sudo bash /root/record_top.sh " >> /var/spool/cron/crontabs/root
+
+crontab -e
+#add a blank line in the end of file
+
+#echo -ne "\n" >> /var/spool/cron/crontabs/root
+#chown root:crontab /var/spool/cron/crontabs/root
+#chown root:root /var/spool/cron/crontabs/root
+
+
+## create database
+MYSQL_ROOT_PW=0ffs4t?
+MYSQL_WYUN_DB=wms
+MYSQL_WYUN_USER=wms
+MYSQL_WYUN_PW=wms
+mysql -uroot -p$MYSQL_ROOT_PW -e "CREATE DATABASE $MYSQL_WYUN_DB"
+
+mysql -uroot -p$MYSQL_ROOT_PW wms<<EOFMYSQL
+DROP TABLE IF EXISTS 802_11_packet;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE 802_11_packet (
+  id int(11) NOT NULL AUTO_INCREMENT,
+  mac varchar(17) DEFAULT NULL,
+  pkttime varchar(10) DEFAULT NULL,
+  pktsignal varchar(2048) DEFAULT NULL,
+  create_t datetime DEFAULT NULL,
+  src_ip_mac varchar(17) DEFAULT NULL,
+  PRIMARY KEY (id),
+  KEY packettime (pkttime),
+  KEY mac (mac)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+EOFMYSQL
+
+mysql -uroot -p$MYSQL_ROOT_PW wms<<EOFMYSQL
+DROP TABLE IF EXISTS eth_packet;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE eth_packet (
+  id int(11) NOT NULL AUTO_INCREMENT,
+  mac varchar(17) DEFAULT NULL,
+  pkttime varchar(10) DEFAULT NULL,
+  srcip varchar(16) DEFAULT NULL,
+  destip varchar(16) DEFAULT NULL,
+  uri varchar(4096) DEFAULT NULL,
+  create_t datetime DEFAULT NULL,
+  src_ip_mac varchar(17) DEFAULT NULL,
+  PRIMARY KEY (id),
+  KEY packettime (pkttime),
+  KEY mac (mac)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;	
+EOFMYSQL
+
+
+cd /usr/src
+rm  -rf  board2ihost
+git clone -b ver2 https://github.com/usspupdates/ihostupd.git
+
+
+reboot
+
+### end ###
+
+
+# change push url
+sed  -i  's|HS_UAMFORMAT=http://\\$HS_UAMLISTEN:\\$HS_UAMUIPORT/www/ihome.html|HS_UAMFORMAT=http://mtxwifi.net/index.html|g'  /etc/chilli/defaults
+
+
+
+
