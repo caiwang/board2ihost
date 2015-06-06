@@ -1,5 +1,5 @@
 #!/bin/bash
-sed  -i  's|interface=wlan1|#interface=wlan1|g'  /etc/dnsmasq.conf
+sed  -i  's|interface=wlan0|#interface=wlan0|g'  /etc/dnsmasq.conf
 sed  -i  's|bind-interfaces|#bind-interfaces|g'  /etc/dnsmasq.conf
 sed  -i  's|except-interface=lo|#except-interface=lo|g'  /etc/dnsmasq.conf
 sed  -i  's|dhcp-range=wlan1,172.16.0.100,172.16.0.200,2h|#dhcp-range=wlan1,172.16.0.100,172.16.0.200,2h|g'  /etc/dnsmasq.conf
