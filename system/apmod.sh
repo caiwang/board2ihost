@@ -12,7 +12,7 @@ echo 'Password : '$5
 
 rm  /etc/hostapd/hostapd.conf.std 
 cat > /etc/hostapd/hostapd.conf.std << EOF
-interface=wlan1
+interface=wlan0
 driver=nl80211
 hw_mode=g
 macaddr_acl=0
