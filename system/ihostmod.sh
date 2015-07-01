@@ -91,6 +91,18 @@ service hostapd start
 EOF
 }
 
+put_wlan0_hostapd_to_startup(){
+cat >> ./startup.sh << EOF                                         
+#Set ip on wlan0
+ifconfig wlan0 up
+/sbin/ip addr add 172.16.0.1/16 dev wlan0
+#start hostapd
+bash /root/wifi.wlan0.sh
+
+EOF
+}
+
+
 put_dnsmasq_to_startup(){
 cat >> ./startup.sh << EOF
 #Start dnsmasq 
@@ -153,7 +165,7 @@ EOF
 
 #HS_WANIF=wlan0 # WAN Interface toward the Internet
 CHILLI_WAN_IF_OLD=`cat /etc/chilli/defaults | grep HS_WANIF=`
-#HS_LANIF=wlan1 # Subscriber Interface for client devices
+HS_LANIF=wlan1 # Subscriber Interface for client devices
 CHILLI_LAN_IF_OLD=`cat /etc/chilli/defaults | grep HS_LANIF=`
 
 #IGNORE_RESOLVCONF=yes
@@ -194,6 +206,24 @@ then
     put_manage_if_to_startup
     sed  -i  "s|$DNSMASQ_RESOLVCONF|#IGNORE_RESOLVCONF=yes|g"  /etc/default/dnsmasq
     sed  -i  "s|$DNSMASQ_RESOLVFILE|#resolv-file=/etc/resolv.dnsmasq.conf|g"  /etc/dnsmasq.conf
+
+elif [ "$1" = 'wlan0' -a  "$2" = 'eth0' ]
+then
+    WAN_IF='eth0'
+    LAN_IF='wlan0'
+    MAN_IF='eth0:9'
+
+    put_head_to_startup
+    put_eth0_connect_to_startup
+    put_wlan0_hostapd_to_startup
+    put_dnsmasq_to_startup
+    put_iptables_to_startup
+    put_haveged_to_startup
+    put_chilli_to_startup
+    put_manage_if_to_startup
+    sed  -i  "s|$DNSMASQ_RESOLVCONF|#IGNORE_RESOLVCONF=yes|g"  /etc/default/dnsmasq
+    sed  -i  "s|$DNSMASQ_RESOLVFILE|#resolv-file=/etc/resolv.dnsmasq.conf|g"  /etc/dnsmasq.conf
+
 
 elif [ "$1" = 'eth0' -a  "$2" = 'eth0' ]
 then
