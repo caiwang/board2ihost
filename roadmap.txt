@@ -1,6 +1,7 @@
 2015-07-01整理
 1, 按照 udoo2ihost.txt 步骤 ->  ihost.u.0408.img
 2, 执行 bash /root/ihostmod.sh wlan0 eth0 wlan0 wlan0 切换到 client -> wlan0 --> eth0 -> internet 模式
+   ssid ：  mtxwifi
 3，按照 https://github.com/unissoft-bj/ihostsvc/issues/61 步骤，部署war包
 4，制作 ghost2015-06-292.img
 5，执行 https://github.com/unissoft-bj/ihostsvc/issues/101#issue-91955866
