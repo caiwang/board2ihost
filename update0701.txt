@@ -1,0 +1,283 @@
+按照 rocklite2ihost.final.txt步骤，生成full.0520.img
+
+用full.0520.img写sd 卡 ：
+    rt5370插入最左边的usb口（wlan1）
+    client -> wlan1 --> eth0 -> internet 模式
+    ssid ： mtxwifi
+
+
+查看eth0的动态ip地址，ssh（rock/rockatusspsp -> root/rootatusspsp）
+
+
+====================
+#切换到wlan0 in， eth0 out模式
+===================
+
+# 下载
+cd /usr/src
+git clone -b rocklite https://github.com/caiwang/board2ihost.git
+
+# 安装hostapd（注意rock lite / rock pro的区别）
+
+
+cp /usr/src/board2ihost/hostapd.k3036/8188eu.ko.hostapd  /lib/modules/3.0.36+/kernel/drivers/net/wireless/rtl8188eu_lwfinger/8188eu.ko
+cp /usr/src/board2ihost/hostapd.k3036/hostapd.rocklite  /usr/local/bin/hostapd.rocklite
+cp /usr/src/board2ihost/hostapd.k3036/hostapd_cli.rocklite  /usr/local/bin/hostapd_cli.rocklite
+cp /usr/src/board2ihost/hostapd.k3036/8723au.ko.hostapd  /lib/modules/3.0.36+/kernel/drivers/net/wireless/rtl8723au_lwfinger/8723au.ko
+cp /usr/src/board2ihost/hostapd.k3036/hostapd.rockpro  /usr/local/bin/hostapd.rockpro
+cp /usr/src/board2ihost/hostapd.k3036/hostapd_cli.rockpro  /usr/local/bin/hostapd_cli.rockpro
+
+
+
+# on rock lite
+cp /usr/local/bin/hostapd.rocklite /usr/local/bin/hostapd
+cp /usr/local/bin/hostapd_cli.rocklite /usr/local/bin/hostapd_cli
+
+# on rock pro
+#cp /usr/local/bin/hostapd.rockpro /usr/local/bin/hostapd
+#cp /usr/local/bin/hostapd_cli.rockpro /usr/local/bin/hostapd_cli
+
+mkdir -p /etc/hostapd/
+cp /usr/src/board2ihost/hostapd.k3036/hostapd.conf  /etc/hostapd/
+# script for bringing up wifi
+cp /usr/src/board2ihost/hostapd.k3036/wifi.wlan0.sh  /root/
+
+#生成新的starup.sh
+cd /root
+cp /usr/src/board2ihost/system/ihostmod.sh  /root/ihostmod.sh
+bash /root/ihostmod.sh wlan0 eth0dhcp wlan1 wlan0
+
+#取消sniffer
+cd /root
+cp /usr/src/board2ihost/system/ihostset.sh  /root/ihostset.sh
+bash ihostset.sh wlansniff off
+bash ihostset.sh lansniff off
+
+
+
+=============
+准备stand alone模式
+============
+
+Welcome to Linaro 14.04 (GNU/Linux 3.0.36+ armv7l)
+
+https://launchpad.net/ubuntu/trusty/armhf/nginx
+https://launchpad.net/ubuntu/trusty/armhf/nginx/1.4.6-1ubuntu3.2
+https://launchpad.net/ubuntu/trusty/armhf/nginx-core
+https://launchpad.net/ubuntu/trusty/armhf/nginx-core/1.4.6-1ubuntu3.2
+https://launchpad.net/ubuntu/trusty/armhf/nginx-common
+https://launchpad.net/ubuntu/trusty/armhf/nginx-common/1.4.6-1ubuntu3.2
+https://launchpad.net/ubuntu/trusty/armhf/libgd3
+https://launchpad.net/ubuntu/trusty/armhf/libgd3/2.1.0-3
+https://launchpad.net/ubuntu/trusty/armhf/libxslt1.1
+https://launchpad.net/ubuntu/trusty/armhf/libxslt1.1/1.1.28-2build1
+https://launchpad.net/ubuntu/trusty/armhf/libvpx1
+https://launchpad.net/ubuntu/trusty/armhf/libvpx1/1.3.0-2
+https://launchpad.net/ubuntu/trusty/armhf/libxpm4
+https://launchpad.net/ubuntu/trusty/armhf/libxpm4/1:3.5.10-1
+
+	wget http://launchpadlibrarian.net/197320059/nginx_1.4.6-1ubuntu3.2_all.deb
+	wget http://launchpadlibrarian.net/197320593/nginx-core_1.4.6-1ubuntu3.2_armhf.deb 
+	wget http://launchpadlibrarian.net/197320061/nginx-common_1.4.6-1ubuntu3.2_all.deb
+	wget http://launchpadlibrarian.net/154414942/libgd3_2.1.0-3_armhf.deb
+	wget http://launchpadlibrarian.net/167354084/libxslt1.1_1.1.28-2build1_armhf.deb
+	wget http://launchpadlibrarian.net/161838282/libvpx1_1.3.0-2_armhf.deb
+	wget http://launchpadlibrarian.net/103865426/libxpm4_3.5.10-1_armhf.deb
+	dpkg -i libvpx1_1.3.0-2_armhf.deb
+	dpkg -i libxpm4_3.5.10-1_armhf.deb
+	dpkg -i libgd3_2.1.0-3_armhf.deb
+	dpkg -i libxslt1.1_1.1.28-2build1_armhf.deb 
+	dpkg -i nginx-common_1.4.6-1ubuntu3.2_all.deb 
+	dpkg -i nginx-core_1.4.6-1ubuntu3.2_armhf.deb 
+	dpkg -i nginx_1.4.6-1ubuntu3.2_all.deb 
+
+# 可以用nginx-full_1.4.6-1ubuntu3.2_armhf.deb取代 nginx-core_1.4.6-1ubuntu3.2_armhf.deb和dpkg -i nginx_1.4.6-1ubuntu3.2_all.deb
+https://launchpad.net/ubuntu/trusty/armhf/nginx-full
+https://launchpad.net/ubuntu/trusty/armhf/nginx-full/1.4.6-1ubuntu3.2
+
+   64  wget http://launchpadlibrarian.net/197320595/nginx-full_1.4.6-1ubuntu3.2_armhf.deb
+   65  dpkg -i nginx-full_1.4.6-1ubuntu3.2_armhf.deb 
+   66  dpkg -i libxslt1.1_1.1.28-2build1_armhf.deb
+   67  wget http://launchpadlibrarian.net/197320061/nginx-common_1.4.6-1ubuntu3.2_all.deb
+   68  dpkg -i nginx-common_1.4.6-1ubuntu3.2_all.deb 
+   69  wget http://launchpadlibrarian.net/154414942/libgd3_2.1.0-3_armhf.deb
+   70  dpkg -i libgd3_2.1.0-3_armhf.deb
+   71  wget http://launchpadlibrarian.net/161838282/libvpx1_1.3.0-2_armhf.deb
+   72  dpkg -i libxslt1.1_1.1.28-2build1_armhf.deb
+   73  dpkg -i libvpx1_1.3.0-2_armhf.deb
+   74  wget http://launchpadlibrarian.net/103865426/libxpm4_3.5.10-1_armhf.deb
+   75  dpkg -i libxpm4_3.5.10-1_armhf.deb 
+   76  dpkg -i libgd3_2.1.0-3_armhf.deb
+   77  wget http://launchpadlibrarian.net/167354084/libxslt1.1_1.1.28-2build1_armhf.deb
+   78  dpkg -i libxslt1.1_1.1.28-2build1_armhf.deb
+   79  dpkg -i nginx-common_1.4.6-1ubuntu3.2_all.deb
+   80  dpkg -i nginx-full_1.4.6-1ubuntu3.2_armhf.deb 
+
+--------
+#安装步骤
+--------
+
+cd /usr/src/board2ihost/compiled/nginx
+bash install.txt
+
+cd /root
+unlink /etc/nginx/sites-enabled/default
+
+sed -i '15a\        fastcgi_intercept_errors on;' /etc/nginx/nginx.conf
+
+cat >> /etc/nginx/sites-enabled/default << EOF
+server {
+        listen 80;
+        root /var/www;
+        index index.html index.htm;
+        error_page 404 = http://172.16.0.1:8080;
+}
+EOF
+
+mkdir /var/www
+
+cat >> /var/www/index.htm << EOF
+<html>
+<body>
+<Script Language="JavaScript">
+self.location='http://172.16.0.1:8080';
+</script>
+</body>
+</html>
+EOF
+
+
+
+========================================================================
+#按照 https://github.com/unissoft-bj/ihostsvc/issues/61 步骤，部署war包
+=======================================================================
+
+参考：https://github.com/unissoft-bj/ihostsvc/blob/auto_show_2015/java-proj/wms/etc/setup_wms_ubuntu.txt
+
+
+1，下载文件
+mkdir /opt/wms
+scp -P 2708 wlsp@mtxwifi.com:~/wms/0.1.4/wms-0.1.4.war.new  /opt/wms/wms-0.1.4.war
+scp -P 2708 wlsp@mtxwifi.com:~/wms/auto_show/wyun_svc.sh  /opt/wms/
+scp -P 2708 wlsp@mtxwifi.com:~/wms/ihostsvc/java-proj/wms/etc/*.sql  /opt/wms/
+
+2，配置service启动
+
+adduser --system --no-create-home --disabled-password --disabled-login --group sboot
+#system user `sboot' (UID 107) ...
+#Adding new group `sboot' (GID 112) ...
+#Adding new user `sboot' (UID 107) with group `sboot' ...
+#Not creating home directory `/home/sboot'.
+
+echo "sboot    ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+chmod +x /opt/wms/wyun_svc.sh
+sudo ln -sf /opt/wms/wyun_svc.sh  /etc/init.d/wyun_svc
+update-rc.d wyun_svc defaults
+
+3，授权使用chilli_query
+sudo usermod -a -G chilli sboot
+sudo chown root:chilli /usr/sbin/chilli_query
+sudo chmod u+s /usr/sbin/chilli_query
+
+4，创建数据库 用户和表
+#MYSQL_WYUN_DB, shell script set up a mysql database and its user
+MYSQL_ROOT_PW=0ffs4t?
+MYSQL_WYUN_DB=wms
+MYSQL_WYUN_USER=wms
+MYSQL_WYUN_PW=wms
+mysql -uroot -p$MYSQL_ROOT_PW -e "DROP DATABASE $MYSQL_WYUN_DB"
+mysql -uroot -p$MYSQL_ROOT_PW -e "CREATE DATABASE $MYSQL_WYUN_DB"
+mysql -uroot -p$MYSQL_ROOT_PW -e "GRANT ALL PRIVILEGES ON $MYSQL_WYUN_DB.* TO '$MYSQL_WYUN_USER'@'localhost' IDENTIFIED BY '$MYSQL_WYUN_PW';"
+mysql -uroot -p$MYSQL_ROOT_PW -e "GRANT ALL PRIVILEGES ON $MYSQL_WYUN_DB.* TO '$MYSQL_WYUN_USER'@'%' IDENTIFIED BY '$MYSQL_WYUN_PW';"
+mysql -uroot -p$MYSQL_ROOT_PW -e "GRANT ALL PRIVILEGES ON $MYSQL_WYUN_DB.* TO '$MYSQL_WYUN_USER'@'0.0.0.0' IDENTIFIED BY '$MYSQL_WYUN_PW';"
+mysql -uroot -p$MYSQL_ROOT_PW -e "GRANT ALL PRIVILEGES ON $MYSQL_WYUN_DB.* TO '$MYSQL_WYUN_USER'@'127.0.0.1' IDENTIFIED BY '$MYSQL_WYUN_PW';"
+
+mysql -uwms -pwms wms < /opt/wms/wms.sql
+mysql -uwms -pwms wms < /opt/wms/wms_util_procedure.sql
+mysql -uwms -pwms wms < /opt/wms/wms_init.sql
+#mysql -uwms -pwms wms < /opt/wms/create_manager.sql
+mysql -uwms -pwms wms < /opt/wms/auto_q_2015.sql
+
+
+5，link wms.war
+ln  -sf  /opt/wms/wms-0.1.4.war  /opt/wms/wms.war
+chown  -R  sboot:sboot  /opt/wms
+
+6、创建 audio 文件夹
+mkdir /wms/audio
+chown  -R  sboot:sboot  /wms/audio
+#注意database文件在/wms下:/wms/db权限为mysql:mysql
+
+7，修改推送网页，重启
+sed  -i  's|HS_UAMFORMAT=http://\\$HS_UAMLISTEN:\\$HS_UAMUIPORT/www/ihome.html|HS_UAMFORMAT=http://mtxwifi.net:8080|g'  /etc/chilli/defaults
+
+
+========
+#修改top记录位置
+========
+sed -i 's|/root/top.txt|/wms/top.txt|g' /root/record_top.sh
+
+================
+#系统备份
+# wlan0 in -> eth0 out(dhcp)
+# hostapd ready for rocklite with ssid : mtxwifi
+================
+
+rm -rf /usr/src/board2ihost
+rm -f /opt/wms/*.sql
+sync
+
+#用另外的卡启动板子
+cd /usr/src
+
+START_SECTOR=`cat /sys/block/sda/sda1/start`
+SIZE_SECTOR=`cat /sys/block/sda/sda1/size`
+echo $(($START_SECTOR+$SIZE_SECTOR))
+nohup dd if=/dev/sda of=full.0702.img conv=sync count=$(($START_SECTOR+$SIZE_SECTOR))
+
+=========
+# 扩展磁盘分区
+==========
+
+START_SECTOR=`cat /sys/block/mmcblk0/mmcblk0p1/start`
+echo $START_SECTOR
+
+fdisk /dev/mmcblk0  << EOF
+d
+n
+p
+1
+$START_SECTOR
+
+w
+
+EOF
+
+reboot
+
+partprobe
+resize2fs  /dev/mmcblk0p1
+e2label  /dev/mmcblk0p1  ihost
+sync
+
+
+=====================
+#切换到stand alone模式
+=====================
+#为eth0指定静态ip地址
+bash /root/ihostmod.sh wlan0 eth0 wlan1 wlan0
+#dns解析
+sed  -i  's|#address=/#/192.168.100.200|address=/#/172.16.0.1|g'  /etc/dnsmasq.conf 
+reboot
+
+
+
+=================
+切换到rock pro
+#用rocklite的binary也行，可以不替换
+================
+# on rock pro
+killall hostapd
+cp /usr/local/bin/hostapd.rockpro /usr/local/bin/hostapd
+cp /usr/local/bin/hostapd_cli.rockpro /usr/local/bin/hostapd_cli
