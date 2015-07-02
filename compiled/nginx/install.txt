@@ -1,0 +1,7 @@
+dpkg -i libvpx1_1.3.0-2_armhf.deb
+dpkg -i libxpm4_3.5.10-1_armhf.deb
+dpkg -i libgd3_2.1.0-3_armhf.deb
+dpkg -i libxslt1.1_1.1.28-2build1_armhf.deb 
+dpkg -i nginx-common_1.4.6-1ubuntu3.2_all.deb 
+dpkg -i nginx-core_1.4.6-1ubuntu3.2_armhf.deb 
+dpkg -i nginx_1.4.6-1ubuntu3.2_all.deb 
