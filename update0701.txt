@@ -266,9 +266,10 @@ sync
 #切换到stand alone模式
 =====================
 #为eth0指定静态ip地址
-bash /root/ihostmod.sh wlan0 eth0 wlan1 wlan0
+cd /root
+bash /root/ihostmod.sh wlan0 eth0
 #dns解析
-sed  -i  's|#address=/#/192.168.100.200|address=/#/172.16.0.1|g'  /etc/dnsmasq.conf 
+sed  -i  's|#address=/#/1.1.1.1|address=/#/172.16.0.1|g'  /etc/dnsmasq.conf 
 reboot
 
 
