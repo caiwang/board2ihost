@@ -31,6 +31,25 @@ chmod  +x  /usr/bin/wlcap
 git clone https://github.com/unissoft-bj/ihost.git
 #git clone git@github.com:unissoft-bj/ihost.git
 
+12，安装 aircrack-ng 约10分钟，airodump-ng-oui-update可略过不做
+root@ihost:/usr/src# tar zxvf aircrack-ng-1.1.tar.gz
+root@ihost:/usr/src# cd aircrack-ng-1.1/
+root@ihost:/usr/src/aircrack-ng-1.1# nano common.mak
+把 -Werror 删除
+
+OPTFLAGS        = -D_FILE_OFFSET_BITS=64
+CFLAGS          ?= -g -W -Wall -Werror -O3
+CFLAGS          += $(OPTFLAGS) $(REVFLAGS) $(COMMON_CFLAGS)
+
+OPTFLAGS        = -D_FILE_OFFSET_BITS=64
+CFLAGS          ?= -g -W -Wall -O3
+CFLAGS          += $(OPTFLAGS) $(REVFLAGS) $(COMMON_CFLAGS)
+
+root@ihost:/usr/src/aircrack-ng-1.1# make
+root@ihost:/usr/src/aircrack-ng-1.1# make install
+root@ihost:/usr/src/aircrack-ng-1.1# airodump-ng-oui-update
+root@ihost:/usr/src/aircrack-ng-1.1#
+
 
 创建数据库
 =====================================
