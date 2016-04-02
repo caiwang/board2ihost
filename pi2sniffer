@@ -86,5 +86,5 @@ ln  -sf  /media/data/ihost/system/base/node  /root/node # id in ihosts-iserver a
 
 
 # switch to hotspot off mode 
-cd /usr/src/ihostsrc
+# https://github.com/caiwang/board2ihost/blob/pi/ihost.hotspot.off
 excute command "ihost.hotspot.off" on your pi
