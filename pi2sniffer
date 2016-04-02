@@ -1,0 +1,90 @@
+1，	下载image文件烧制sd卡
+
+从网站下载RASPBIAN image
+http://www.raspberrypi.org/downloads/
+此处使用的是2014-06-20-wheezy-raspbian.img
+
+2，	从sd卡启动pi，从上级路由器中分配并查看ip地址
+3，	ssh，用户名：pi  密码：raspberry
+
+7，	设置时区
+root@ihost:~# dpkg-reconfigure tzdata  #Asia Shanghai
+
+9，	apt-get instll items
+###common
+#mysql db: root’s password: rootatussp
+apt-get install -y mysql-server python-mysqldb  
+
+#for sniffer
+apt-get install -y tshark iw
+
+# github : in /usr/src/ 
+git clone https://github.com/caiwang/ihostsrc.git
+#git clone git@github.com:caiwang/ihostsrc.git
+git clone https://github.com/usspupdates/ihostupd.git
+
+#cp  /usr/src/ihostsrc/source/wlcap.ihost  /usr/bin/wlcap
+cp  /usr/bin/tshark  /usr/bin/wlcap
+chmod  +x  /usr/bin/wlcap
+
+# github : in /usr/src/ 
+git clone https://github.com/unissoft-bj/ihost.git
+#git clone git@github.com:unissoft-bj/ihost.git
+
+
+创建数据库
+=====================================
+wlsp
+=====================================
+#1, 创建数据库wlsp
+#2, 创建表结构(base.sql为基本表.ihost.sql为ihost上的视图、触发器（iserver不用）)
+#3, 创建数据库用户
+#预置root远程访问sql server的权力
+echo "create database wlsp;" | mysql -uroot -prootatussp
+mysql -uroot -prootatussp  wlsp <  /usr/src/ihost/db.schema/wlsp.sys.base.sql
+mysql -uroot -prootatussp  wlsp < /usr/src/ihost/db.schema/wlsp.sys.ihost.sql
+mysql -uroot -prootatussp  wlsp <  /usr/src/ihost/db.schema/wlsp.sys.users.sql
+echo "GRANT ALL PRIVILEGES ON *.* TO root@'%' IDENTIFIED BY 'rootatussp'; " | mysql -uroot -prootatussp 
+echo "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%'WITH GRANT OPTION; " | mysql -uroot -prootatussp
+echo "FLUSH PRIVILEGES; "| mysql -uroot -prootatussp
+
+mkdir  /media/data
+
+# github : in /usr/src/ihost
+git pull
+cp  -r  /usr/src/ihost  /media/data/ihost
+
+# crontab job
+cp  /var/spool/cron/crontabs/root  /var/spool/cron/crontabs/root.bak
+echo "30 3 * * * sudo reboot" >> /var/spool/cron/crontabs/root
+chown  root:crontab  /var/spool/cron/crontabs/root
+chmod 600 /var/spool/cron/crontabs/root
+
+# wireless packet capture
+ln  -sf /media/data/ihost/wlcap/wlsetcap.sh /root/wlsetcap.sh
+echo "@reboot sudo bash /root/wlsetcap.sh &" >> /var/spool/cron/crontabs/root
+
+ln  -sf  /media/data/ihost/wlcap/config.xml  /root/config.xml
+ln  -sf  /media/data/ihost/wlcap/filter.xml  /root/filter.xml
+ln  -sf  /media/data/ihost/wlcap/rdpp.py  /root/rdpp.py
+ln  -sf  /media/data/ihost/wlcap/wdog.py  /root/wdog.py
+echo "*/5 * * * * sudo python /root/wdog.py &" >> /var/spool/cron/crontabs/root
+
+ln  -sf  /media/data/ihost/wlcap/configauth.xml  /root/configauth.xml
+ln  -sf  /media/data/ihost/wlcap/onsite.py  /root/onsite.py
+echo "*/1 * * * * sudo python /root/onsite.py &" >> /var/spool/cron/crontabs/root
+ln  -sf  /media/data/ihost/wlcap/onsitechk.py  /root/onsitechk.py
+echo "*/2 * * * * sudo python /root/onsitechk.py &" >> /var/spool/cron/crontabs/root
+
+# ihost data to iserver
+ln  -sf  /media/data/ihost/datasvc/wlspupload.xml /root/wlspupload.xml 
+ln  -sf  /media/data/ihost/datasvc/wlsp2iserver.py /root/wlsp2iserver.py
+echo "@reboot sudo python /root/wlsp2iserver.py &" >> /var/spool/cron/crontabs/root
+
+# nodename & services
+ln  -sf  /media/data/ihost/system/base/node  /root/node # id in ihosts-iserver archite
+
+
+# switch to hotspot off mode 
+cd /usr/src/ihostsrc
+excute command "ihost.hotspot.off" on your pi
